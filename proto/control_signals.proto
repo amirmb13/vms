@@ -1,0 +1,153 @@
+// =============================================================================
+// control_signals.proto
+// Control Plane (Django) -> Data Plane (C++ Recording Server) control channel.
+// Django is the single source of truth; C++ servers receive lightweight
+// control signals to reconfigure RTSP sessions WITHOUT process restarts.
+// =============================================================================
+syntax = "proto3";
+
+package vms.control;
+
+option optimize_for = SPEED;
+
+// ---------------------------------------------------------------------------
+// Service exposed BY the C++ Recording Server, called BY Django.
+// ---------------------------------------------------------------------------
+service RecordingServerControl {
+  // Push a camera configuration change (add / update / remove).
+  rpc ApplyCameraConfig(CameraConfigRequest) returns (ControlAck);
+
+  // Force-reset RTSP sessions for a camera (e.g. credentials rotated).
+  rpc ResetStream(StreamResetRequest) returns (ControlAck);
+
+  // Update the ROI motion-detection bitmask grid for a camera.
+  rpc UpdateMotionRoi(MotionRoiRequest) returns (ControlAck);
+
+  // Health / capacity probe used by the Django orchestrator.
+  rpc GetServerHealth(HealthRequest) returns (ServerHealthReport);
+
+  // Four-Eyes authorized destructive operation (archive pruning).
+  rpc PruneArchive(PruneRequest) returns (ControlAck);
+}
+
+// ---------------------------------------------------------------------------
+// Service exposed BY Django, called BY the C++ Recording Server.
+// ---------------------------------------------------------------------------
+service ControlPlaneEvents {
+  // C++ pushes motion / connectivity / storage events for audit + alerting.
+  rpc ReportEvent(stream ServerEvent) returns (ControlAck);
+
+  // C++ registers itself on boot and receives its assigned camera set.
+  rpc RegisterServer(ServerRegistration) returns (AssignedCameraSet);
+}
+
+// ------------------------------ Messages -----------------------------------
+
+enum StreamProfile {
+  STREAM_PROFILE_UNSPECIFIED = 0;
+  STREAM_PROFILE_MAIN = 1; // 4K @ 25fps  - archive + fullscreen
+  STREAM_PROFILE_MID  = 2; // 720p/1080p  - 4-camera grids
+  STREAM_PROFILE_SUB  = 3; // 360p @ 15fps - large grids + motion detection
+}
+
+enum CameraAction {
+  CAMERA_ACTION_UNSPECIFIED = 0;
+  CAMERA_ACTION_ADD = 1;
+  CAMERA_ACTION_UPDATE = 2;
+  CAMERA_ACTION_REMOVE = 3;
+  CAMERA_ACTION_DISABLE = 4;
+}
+
+message RtspEndpoint {
+  string url = 1;               // rtsp://... (credentials injected server-side)
+  StreamProfile profile = 2;
+  uint32 width = 3;
+  uint32 height = 4;
+  uint32 fps = 5;
+  string codec = 6;             // "h264" | "h265"
+}
+
+message CameraConfigRequest {
+  string camera_uuid = 1;
+  CameraAction action = 2;
+  string onvif_endpoint = 3;
+  repeated RtspEndpoint streams = 4;
+  bool recording_enabled = 5;
+  uint32 retention_days = 6;
+  bool onvif_motion_events = 7; // Layer 1 motion source available
+  string config_revision = 8;   // monotonically increasing revision from Django
+}
+
+message StreamResetRequest {
+  string camera_uuid = 1;
+  StreamProfile profile = 2;    // UNSPECIFIED = reset all profiles
+  string reason = 3;
+}
+
+message MotionRoiRequest {
+  string camera_uuid = 1;
+  // Bitmask grid packed row-major, 1 bit per cell (e.g. 32x24 grid = 96 bytes).
+  bytes roi_bitmask = 2;
+  uint32 grid_cols = 3;
+  uint32 grid_rows = 4;
+  uint32 sensitivity = 5;       // 0..100
+}
+
+message HealthRequest {}
+
+message ServerHealthReport {
+  string server_uuid = 1;
+  uint32 active_cameras = 2;
+  uint32 relay_clients = 3;
+  double cpu_percent = 4;
+  double ram_used_mb = 5;
+  bool gpu_available = 6;       // hardware-agnostic: CUDA/QuickSync present
+  double storage_free_gb = 7;
+  uint64 ntp_offset_us = 8;     // local NTP discipline offset (microseconds)
+}
+
+message PruneRequest {
+  string camera_uuid = 1;
+  uint64 before_utc_epoch_ms = 2;
+  // Four-Eyes Authorization: two distinct admin signatures verified by Django,
+  // forwarded so the C++ side can log them into the immutable audit trail.
+  string approval_signature_a = 3;
+  string approval_signature_b = 4;
+}
+
+message ServerRegistration {
+  string server_uuid = 1;
+  string hostname = 2;
+  string version = 3;
+  bool gpu_available = 4;
+  repeated string simd_capabilities = 5; // e.g. ["AVX2", "AVX512"]
+}
+
+message AssignedCameraSet {
+  repeated CameraConfigRequest cameras = 1;
+}
+
+enum EventType {
+  EVENT_TYPE_UNSPECIFIED = 0;
+  EVENT_MOTION_STARTED = 1;
+  EVENT_MOTION_STOPPED = 2;
+  EVENT_CAMERA_OFFLINE = 3;
+  EVENT_CAMERA_ONLINE = 4;
+  EVENT_STORAGE_WARNING = 5;
+  EVENT_EDGE_GAP_STITCHED = 6;  // ONVIF Profile G retrieval completed
+  EVENT_AI_FACE_MATCH = 7;
+}
+
+message ServerEvent {
+  string server_uuid = 1;
+  string camera_uuid = 2;
+  EventType type = 3;
+  uint64 utc_epoch_ms = 4;      // internal storage is ALWAYS UTC
+  string payload_json = 5;      // event-specific structured payload
+}
+
+message ControlAck {
+  bool ok = 1;
+  string message_fa = 2;        // human-readable Farsi status message
+  string applied_revision = 3;
+}

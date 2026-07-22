@@ -1,0 +1,103 @@
+// =============================================================================
+// media_relay.proto
+// Qt Client <-> C++ Media Relay Engine session negotiation.
+//
+// NOTE: Actual media packets flow over RTSP/RTP (unicast) or IGMP multicast
+// (video walls) FROM the C++ Media Relay — never directly from cameras
+// (Zero-Trust VLAN isolation). This service only negotiates sessions,
+// adaptive profile switching, and synchronized playback control.
+// =============================================================================
+syntax = "proto3";
+
+package vms.relay;
+
+import "control_signals.proto";
+
+option optimize_for = SPEED;
+
+// Service exposed BY the C++ Media Relay, called BY the Qt desktop client.
+service MediaRelay {
+  // Open a relayed live session (JWT from Django validated server-side).
+  rpc OpenLiveSession(LiveSessionRequest) returns (SessionDescriptor);
+
+  // Adaptive streaming: seamless I-frame-aligned profile switch
+  // (e.g. grid 360p -> double-click fullscreen 4K, no black frames).
+  rpc SwitchProfile(ProfileSwitchRequest) returns (SessionDescriptor);
+
+  // Open archived playback (PiP worker threads use independent sessions).
+  rpc OpenPlaybackSession(PlaybackSessionRequest) returns (SessionDescriptor);
+
+  // Global Sync Playback: master timeline broadcasts an NTP timestamp
+  // that all decoding engines must render simultaneously.
+  rpc SeekSynchronized(SyncSeekRequest) returns (SyncSeekAck);
+
+  // Query recorded segments for timeline rendering (incl. stitched
+  // ONVIF Profile G edge-storage gap fills).
+  rpc GetTimelineSegments(TimelineRequest) returns (TimelineResponse);
+
+  rpc CloseSession(CloseSessionRequest) returns (CloseSessionAck);
+}
+
+message LiveSessionRequest {
+  string jwt_token = 1;               // issued by Django Control Plane
+  string camera_uuid = 2;
+  vms.control.StreamProfile profile = 3;
+  bool prefer_multicast = 4;          // video-wall deployments
+}
+
+message SessionDescriptor {
+  string session_id = 1;
+  string rtsp_url = 2;                // relay endpoint, NEVER the camera
+  string multicast_group = 3;         // set when IGMP multicast is used
+  uint32 multicast_port = 4;
+  vms.control.StreamProfile active_profile = 5;
+  string error_fa = 6;                // Farsi error message when denied
+}
+
+message ProfileSwitchRequest {
+  string session_id = 1;
+  vms.control.StreamProfile target_profile = 2;
+  // Relay waits for the next I-frame on the target profile before switching
+  // so the client decoder transitions without flicker.
+  bool iframe_aligned = 3;
+}
+
+message PlaybackSessionRequest {
+  string jwt_token = 1;
+  string camera_uuid = 2;
+  uint64 start_utc_epoch_ms = 3;
+  double speed = 4;                   // 1.0 normal, 0 = paused, negative = reverse
+}
+
+message SyncSeekRequest {
+  repeated string session_ids = 1;    // every active playback cell in the grid
+  uint64 target_utc_epoch_ms = 2;     // master NTP timestamp
+  double speed = 3;
+}
+
+message SyncSeekAck {
+  bool ok = 1;
+  uint64 applied_utc_epoch_ms = 2;
+  string error_fa = 3;
+}
+
+message TimelineRequest {
+  string jwt_token = 1;
+  string camera_uuid = 2;
+  uint64 from_utc_epoch_ms = 3;
+  uint64 to_utc_epoch_ms = 4;
+}
+
+message Segment {
+  uint64 start_utc_epoch_ms = 1;
+  uint64 end_utc_epoch_ms = 2;
+  bool motion = 3;
+  bool edge_retrieved = 4;            // stitched from camera SD (Profile G)
+}
+
+message TimelineResponse {
+  repeated Segment segments = 1;
+}
+
+message CloseSessionRequest { string session_id = 1; }
+message CloseSessionAck { bool ok = 1; }

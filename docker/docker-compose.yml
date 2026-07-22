@@ -1,0 +1,152 @@
+# =============================================================================
+# VMS deployment stack — Control Plane + AI Engine.
+#
+#   docker compose -f docker/docker-compose.yml up -d
+#
+# NOTE: the C++ Recording Server (data plane) runs as a NATIVE service on the
+# host for maximum I/O throughput — it is intentionally NOT containerized.
+# The AI engine runs with `ipc: host` so it can map the POSIX shared-memory
+# frame ring buffers (/dev/shm/vms_frame_*) created by the native C++ server.
+# =============================================================================
+name: vms
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-vms}
+      POSTGRES_USER: ${POSTGRES_USER:-vms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vms}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vms} -d ${POSTGRES_DB:-vms}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "no", "--save", ""]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  django:
+    build:
+      context: ..
+      dockerfile: docker/django.Dockerfile
+    restart: unless-stopped
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-insecure-dev-only-change-me}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-0}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-*}
+      POSTGRES_DB: ${POSTGRES_DB:-vms}
+      POSTGRES_USER: ${POSTGRES_USER:-vms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vms}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+      # Optional Microsoft Active Directory
+      AD_LDAP_URI: ${AD_LDAP_URI:-}
+      AD_BIND_DN: ${AD_BIND_DN:-}
+      AD_BIND_PASSWORD: ${AD_BIND_PASSWORD:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4"
+
+  # ControlPlaneEvents gRPC server: C++ Recording Servers register here on
+  # boot (RegisterServer) and stream motion/connectivity/AI events into the
+  # audit trail (ReportEvent).
+  django-grpc:
+    build:
+      context: ..
+      dockerfile: docker/django.Dockerfile
+    restart: unless-stopped
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-insecure-dev-only-change-me}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-0}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-*}
+      POSTGRES_DB: ${POSTGRES_DB:-vms}
+      POSTGRES_USER: ${POSTGRES_USER:-vms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vms}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+      CONTROL_PLANE_GRPC_PORT: "50060"
+      RECORDING_SERVER_CONTROL_PORT: "50051"
+    ports:
+      - "50060:50060"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      django:
+        condition: service_started
+    command: python manage.py run_control_grpc --port 50060
+
+  # Liveness prober: polls RecordingServerControl.GetServerHealth on every
+  # registered C++ node and flips is_online / raises storage warnings.
+  django-health-poller:
+    build:
+      context: ..
+      dockerfile: docker/django.Dockerfile
+    restart: unless-stopped
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-insecure-dev-only-change-me}
+      DJANGO_DEBUG: "0"
+      POSTGRES_DB: ${POSTGRES_DB:-vms}
+      POSTGRES_USER: ${POSTGRES_USER:-vms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vms}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      django:
+        condition: service_started
+    command: python manage.py poll_server_health --interval 15
+
+  ai-engine:
+    build:
+      context: ..
+      dockerfile: ai_engine/Dockerfile
+    restart: unless-stopped
+    # CRITICAL: share the host IPC namespace so the container can shm_open()
+    # the zero-copy frame ring buffers written by the native C++ server.
+    ipc: host
+    environment:
+      AI_GRPC_PORT: "50061"
+      AI_BACKEND: ${AI_BACKEND:-auto}          # auto | openvino-int8 | onnx-cpu-int8
+      AI_MODELS_DIR: /models
+      AI_MAX_PARALLEL_FRAMES: ${AI_MAX_PARALLEL_FRAMES:-4}
+    volumes:
+      - ${AI_MODELS_HOST_DIR:-./models}:/models:ro
+    ports:
+      - "50061:50061"
+    # Uncomment for NVIDIA GPU (TensorRT) deployments:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+volumes:
+  pgdata:

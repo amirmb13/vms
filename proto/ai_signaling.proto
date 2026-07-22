@@ -1,0 +1,90 @@
+// =============================================================================
+// ai_signaling.proto
+// Data Plane (C++) <-> AI Engine (Python/Docker) ZERO-COPY signaling channel.
+//
+// IMPORTANT: Frame pixel data NEVER travels over gRPC. C++ writes decoded raw
+// frames into an OS shared memory block (POSIX shm_open / Windows MMF) and
+// only the block name + geometry + timestamp are sent here. Python maps the
+// block via multiprocessing.shared_memory and views it as a NumPy array with
+// zero copies.
+// =============================================================================
+syntax = "proto3";
+
+package vms.ai;
+
+option optimize_for = SPEED;
+
+// Service exposed BY the Python AI container, called BY C++.
+service AiInference {
+  // Announce a frame available in shared memory; returns detections.
+  rpc ProcessFrame(FrameDescriptor) returns (InferenceResult);
+
+  // Bidirectional stream for high-throughput pipelines.
+  rpc ProcessFrameStream(stream FrameDescriptor) returns (stream InferenceResult);
+
+  // Capability negotiation (GPU/TensorRT vs OpenVINO/ONNX INT8 fallback).
+  rpc GetCapabilities(CapabilityRequest) returns (AiCapabilities);
+}
+
+enum PixelFormat {
+  PIXEL_FORMAT_UNSPECIFIED = 0;
+  PIXEL_FORMAT_RGB24 = 1;
+  PIXEL_FORMAT_BGR24 = 2;
+  PIXEL_FORMAT_GRAY8 = 3;
+  PIXEL_FORMAT_NV12 = 4;
+}
+
+message FrameDescriptor {
+  string shm_name = 1;          // e.g. "/vms_frame_cam42_slot3"
+  uint64 shm_size_bytes = 2;
+  uint32 width = 3;
+  uint32 height = 4;
+  uint32 stride_bytes = 5;
+  PixelFormat format = 6;
+  string camera_uuid = 7;
+  uint64 utc_epoch_ms = 8;      // NTP-disciplined receive timestamp
+  uint64 frame_sequence = 9;
+  uint32 slot_index = 10;       // ring-buffer slot ownership handoff
+}
+
+message BoundingBox {
+  float x = 1;                  // normalized [0..1]
+  float y = 2;
+  float w = 3;
+  float h = 4;
+  float confidence = 5;
+}
+
+message FaceMatch {
+  BoundingBox box = 1;
+  string identity_uuid = 2;     // matched identity in Django PostgreSQL
+  float similarity = 3;         // ArcFace cosine similarity
+  repeated float embedding = 4; // 512-d embedding for forensic storage
+}
+
+message ObjectDetection {
+  BoundingBox box = 1;
+  string label = 2;             // "person", "car", ...
+  // Forensic attributes for Smart Forensic Search (stored in PostgreSQL)
+  map<string, string> attributes = 3; // e.g. {"shirt_color": "red", "gender": "male"}
+}
+
+message InferenceResult {
+  string camera_uuid = 1;
+  uint64 utc_epoch_ms = 2;
+  uint64 frame_sequence = 3;
+  uint32 slot_index = 4;        // slot released back to the C++ ring buffer
+  repeated FaceMatch faces = 5;
+  repeated ObjectDetection objects = 6;
+  double inference_ms = 7;
+  string backend = 8;           // "tensorrt-fp16" | "openvino-int8" | "onnx-cpu-int8"
+}
+
+message CapabilityRequest {}
+
+message AiCapabilities {
+  bool gpu_available = 1;
+  string backend = 2;
+  repeated string models = 3;   // e.g. ["arcface-r100", "yolov8n"]
+  uint32 max_parallel_frames = 4;
+}

@@ -1,0 +1,6 @@
+grpcio>=1.66
+grpcio-tools>=1.66            # stub generation at image build time
+numpy>=1.26
+opencv-python-headless>=4.10  # NV12 conversion + preprocessing (no GUI deps)
+onnxruntime>=1.19             # CPU INT8 fallback backend
+openvino>=2024.4              # Intel CPU/iGPU preferred backend
