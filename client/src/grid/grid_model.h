@@ -5,6 +5,8 @@
 // Two responsibilities:
 //   1. Saved-layout catalogue: GET/POST /api/layouts/ against the Django
 //      Control Plane (layout_json documents are validated server-side).
+//      DRF pagination is followed page-by-page; the model is swapped once
+//      at the end so the GUI thread sees a single reset.
 //   2. Active layout state: the currently applied layout_json, exposed to
 //      GridEngine.qml as a parsed object + per-cell model roles, with
 //      instantaneous apply (no re-instantiation of unaffected delegates).
@@ -17,6 +19,7 @@
 #include <QJsonObject>
 #include <QNetworkAccessManager>
 #include <QString>
+#include <QUrl>
 
 #include <vector>
 
@@ -25,9 +28,10 @@ class QNetworkReply;
 namespace vms {
 
 struct SavedLayout {
-    int id = -1;
+    QString uuid;            // server-side identity (lookup_field = "uuid")
     QString nameFa;
     QJsonObject layoutJson;
+    int cellCount = 0;       // cached at parse time — data() must stay O(1)
     bool isShared = false;
 };
 
@@ -42,12 +46,15 @@ class GridModel : public QAbstractListModel {
 
 public:
     enum Roles {
-        LayoutIdRole = Qt::UserRole + 1,
+        LayoutIdRole = Qt::UserRole + 1,   // server uuid (string)
         NameFaRole,
         IsSharedRole,
         CellCountRole,
     };
     Q_ENUM(Roles)
+
+    // Server-side schema allows up to 16x16 (enterprise video walls).
+    static constexpr int kMaxGridDim = 16;
 
     explicit GridModel(QObject* parent = nullptr);
 
@@ -80,9 +87,10 @@ signals:
     void cellCameraChanged(int cellIndex, const QString& cameraUuid);
 
 private:
+    void requestLayoutsPage(const QUrl& url);      // follows DRF `next` links
     void onLayoutsReply(QNetworkReply* reply);
     void setErrorFa(const QString& message);
-    QNetworkReply* authedRequest(const QString& path, const QByteArray& verb,
+    QNetworkReply* authedRequest(const QUrl& url, const QByteArray& verb,
                                  const QByteArray& body = {});
 
     QNetworkAccessManager nam_;
@@ -90,6 +98,7 @@ private:
     QString auth_token_;
 
     std::vector<SavedLayout> layouts_;
+    std::vector<SavedLayout> incoming_;  // pages accumulate off-model here
     QJsonObject active_;                 // currently applied layout_json
     int pending_ = 0;
     QString error_fa_;

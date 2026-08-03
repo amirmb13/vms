@@ -110,6 +110,16 @@ void StreamIngestor::apply_config_revision(uint64_t revision) {
 void StreamIngestor::reader_loop(const CameraStreamConfig& cfg) {
     int backoff_ms = 500;  // exponential reconnect backoff, capped at 30 s
 
+    // Per-thread jitter (±25%) de-synchronizes reconnect storms: after a
+    // switch/VLAN blip, hundreds of reader threads on one node would
+    // otherwise re-open RTSP sessions in lockstep, spiking CPU and hammering
+    // the cameras at the exact same instant on every retry.
+    std::mt19937 jitter_rng{std::random_device{}()};
+    auto jittered = [&jitter_rng](int ms) {
+        std::uniform_int_distribution<int> dist(-ms / 4, ms / 4);
+        return ms + dist(jitter_rng);
+    };
+
     while (running_.load(std::memory_order_acquire)) {
         const uint64_t session_revision =
             config_revision_.load(std::memory_order_acquire);
@@ -121,6 +131,14 @@ void StreamIngestor::reader_loop(const CameraStreamConfig& cfg) {
         av_dict_set(&opts, "stimeout", "5000000", 0);      // 5 s socket timeout
         av_dict_set(&opts, "reorder_queue_size", "0", 0);  // TCP => in order
         av_dict_set(&opts, "max_delay", "500000", 0);
+        // Mass-(re)connect tuning: FFmpeg's defaults probe up to 5 MB /
+        // several seconds of media per stream inside find_stream_info. With
+        // hundreds of streams per node reconnecting after a network blip,
+        // that multiplies into minutes of dead air and hundreds of MB of
+        // transient probe buffers. IP-camera RTSP sessions carry a known
+        // codec (SDP) — 1 s / 512 KB is ample to lock onto the stream.
+        av_dict_set(&opts, "probesize", "524288", 0);        // 512 KB
+        av_dict_set(&opts, "analyzeduration", "1000000", 0); // 1 s
 
         AVFormatContext* fmt = avformat_alloc_context();
         // Non-blocking shutdown: FFmpeg polls this callback inside blocking IO.
@@ -134,7 +152,8 @@ void StreamIngestor::reader_loop(const CameraStreamConfig& cfg) {
             avformat_find_stream_info(fmt, nullptr) < 0) {
             av_dict_free(&opts);
             if (fmt) avformat_close_input(&fmt);
-            std::this_thread::sleep_for(std::chrono::milliseconds(backoff_ms));
+            std::this_thread::sleep_for(
+                std::chrono::milliseconds(jittered(backoff_ms)));
             backoff_ms = std::min(backoff_ms * 2, 30'000);
             continue;
         }
