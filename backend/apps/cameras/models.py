@@ -89,6 +89,15 @@ class Camera(models.Model):
     class Meta:
         verbose_name = _("دوربین")
         verbose_name_plural = _("دوربین‌ها")
+        # Stable ordering is mandatory for consistent pagination at 10k+ rows.
+        ordering = ["id"]
+        indexes = [
+            # Composite index backing the most common inventory filter path:
+            # "all recording-enabled cameras of group X" (tree + wall loads).
+            models.Index(fields=["group", "recording_enabled"],
+                         name="camera_group_rec_idx"),
+            models.Index(fields=["codec"], name="camera_codec_idx"),
+        ]
 
     def __str__(self) -> str:
         return self.name_fa

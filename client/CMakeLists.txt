@@ -13,7 +13,7 @@ set(CMAKE_AUTORCC ON)
 # -----------------------------------------------------------------------------
 # 1. Qt6 Configuration & Setup
 # -----------------------------------------------------------------------------
-find_package(Qt6 6.6 REQUIRED COMPONENTS Quick QuickControls2 Multimedia Network)
+find_package(Qt6 6.6 REQUIRED COMPONENTS Quick QuickControls2 Multimedia Network Concurrent)
 qt_standard_project_setup(REQUIRES 6.6)
 
 # -----------------------------------------------------------------------------
@@ -74,6 +74,7 @@ target_link_libraries(vms_client PRIVATE
     Qt6::QuickControls2
     Qt6::Multimedia
     Qt6::Network
+    Qt6::Concurrent
     ${FFMPEG_LIBRARIES}
 )
 
