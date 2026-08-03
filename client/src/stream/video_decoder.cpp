@@ -99,44 +99,45 @@ bool VideoDecoder::initHardwareDecoder(AVCodecContext*) {
     return false;
 }
 
-// --- Frame presentation (کاملاً Thread-Safe و ایزوله برای هر Cell) -----------
+// --- Frame presentation (Thread-safe; each decoder owns its own sink) --------
 void VideoDecoder::presentFrame(AVFrame* frame, quint64 utcUs) {
     if (!sink_ || !frame || frame->width <= 0 || frame->height <= 0 ||
         frame->format == AV_PIX_FMT_NONE || !frame->data[0]) return;
 
     const int width = frame->width;
     const int height = frame->height;
-    const int linesize = width * 4;
 
-    const size_t safeBufferSize = static_cast<size_t>(linesize) * height + 256;
-    std::vector<uint8_t> buffer(safeBufferSize);
+    // Cache the scaler across frames (only this worker thread touches sws_).
+    // Recreating SwsContext per frame costs milliseconds per call and cripples
+    // multi-camera walls.
+    sws_ = sws_getCachedContext(sws_, width, height,
+                                static_cast<AVPixelFormat>(frame->format),
+                                width, height, AV_PIX_FMT_RGBA,
+                                SWS_FAST_BILINEAR, nullptr, nullptr, nullptr);
+    if (!sws_) return;
 
-    SwsContext* localSws = sws_getContext(
-        width, height, static_cast<AVPixelFormat>(frame->format),
-        width, height, AV_PIX_FMT_RGBA,
-        SWS_FAST_BILINEAR, nullptr, nullptr, nullptr);
+    // Scale straight into the QVideoFrame's own buffer: zero intermediate
+    // copies. Each QVideoFrame owns its memory, so cells stay fully isolated.
+    QVideoFrameFormat fmtDesc(QSize(width, height),
+                              QVideoFrameFormat::Format_RGBA8888);
+    QVideoFrame vf(fmtDesc);
+    if (!vf.isValid() || !vf.map(QVideoFrame::WriteOnly)) return;
 
-    if (!localSws) return;
+    uint8_t* dst[4] = { vf.bits(0), nullptr, nullptr, nullptr };
+    int dstStride[4] = { vf.bytesPerLine(0), 0, 0, 0 };
+    sws_scale(sws_, frame->data, frame->linesize, 0, height, dst, dstStride);
+    vf.unmap();
 
-    uint8_t* dst[4] = { buffer.data(), nullptr, nullptr, nullptr };
-    int dstStride[4] = { linesize, 0, 0, 0 };
-
-    sws_scale(localSws, frame->data, frame->linesize, 0, height, dst, dstStride);
-    sws_freeContext(localSws);
-
-    // کپی عمیق (copy) برای قطع وابستگی بافر بین خانه‌های مختلف گرید
-    QImage frameImg = QImage(buffer.data(), width, height, linesize, QImage::Format_RGBA8888).copy();
-
-    QVideoFrame vf(frameImg);
+    // Guard BOTH the sink and this decoder: the queued lambda may run on the
+    // GUI thread after either has been destroyed.
     QPointer<QVideoSink> safeSink = sink_;
+    QPointer<VideoDecoder> safeSelf = this;
 
     QMetaObject::invokeMethod(
         sink_,
-        [safeSink, vf, this, utcUs]() {
-            if (safeSink) {
-                safeSink->setVideoFrame(vf);
-                emit framePresented(utcUs);
-            }
+        [safeSink, safeSelf, vf, utcUs]() {
+            if (safeSink) safeSink->setVideoFrame(vf);
+            if (safeSelf) emit safeSelf->framePresented(utcUs);
         },
         Qt::QueuedConnection);
 }
