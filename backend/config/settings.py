@@ -84,6 +84,10 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",),
+    # Enterprise scale: 10k+ cameras must never be serialized in one response.
+    # Clients (Qt CameraTreeModel) follow the `next` link until exhausted.
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 1000,
     # All API errors are rendered in Farsi via the custom exception handler.
     "EXCEPTION_HANDLER": "config.exceptions.farsi_exception_handler",
 }

@@ -10,7 +10,7 @@ from .models import Camera, CameraGroup, MotionRoiGrid, RecordingServer
 
 class RecordingServerSerializer(serializers.ModelSerializer):
     last_heartbeat_shamsi = serializers.SerializerMethodField()
-    camera_count = serializers.IntegerField(source="cameras.count", read_only=True)
+    camera_count = serializers.SerializerMethodField()
 
     class Meta:
         model = RecordingServer
@@ -24,19 +24,37 @@ class RecordingServerSerializer(serializers.ModelSerializer):
     def get_last_heartbeat_shamsi(self, obj):
         return utc_to_shamsi(obj.last_heartbeat) if obj.last_heartbeat else None
 
+    def get_camera_count(self, obj):
+        # Prefer the queryset annotation (single aggregated query for the
+        # whole list) over per-row COUNT(*) round-trips.
+        annotated = getattr(obj, "camera_count_annotated", None)
+        return annotated if annotated is not None else obj.cameras.count()
+
 
 class CameraGroupSerializer(serializers.ModelSerializer):
-    """Recursive directory tree for the Qt client's RTL tree view."""
+    """Recursive directory tree for the Qt client's RTL tree view.
+
+    Scale note: naive recursion (`obj.children.all()` + `cameras.count` per
+    node) costs O(groups) queries. The tree endpoint pre-links children in
+    memory (`_tree_children`) and annotates counts, so serializing thousands
+    of groups touches the database exactly once.
+    """
 
     children = serializers.SerializerMethodField()
-    camera_count = serializers.IntegerField(source="cameras.count", read_only=True)
+    camera_count = serializers.SerializerMethodField()
 
     class Meta:
         model = CameraGroup
         fields = ["id", "name_fa", "parent", "children", "camera_count"]
 
     def get_children(self, obj):
-        return CameraGroupSerializer(obj.children.all(), many=True).data
+        prelinked = getattr(obj, "_tree_children", None)
+        children = prelinked if prelinked is not None else obj.children.all()
+        return CameraGroupSerializer(children, many=True).data
+
+    def get_camera_count(self, obj):
+        annotated = getattr(obj, "camera_count_annotated", None)
+        return annotated if annotated is not None else obj.cameras.count()
 
 
 class MotionRoiGridSerializer(serializers.ModelSerializer):
@@ -109,6 +127,23 @@ class CameraSerializer(serializers.ModelSerializer):
         if password:
             validated_data["password_encrypted"] = password
         return super().update(instance, validated_data)
+
+
+class CameraListSerializer(serializers.ModelSerializer):
+    """Slim payload for the inventory LIST endpoint (10k+ rows).
+
+    The Qt camera tree only needs identity + placement + recording state.
+    Shipping the full serializer for every row multiplies the response size
+    ~8x and leaks operational fields (RTSP URLs, ONVIF endpoints, usernames)
+    to every operator role. Detail view keeps the full serializer.
+    """
+
+    class Meta:
+        model = Camera
+        fields = [
+            "id", "uuid", "name_fa", "group",
+            "recording_enabled", "codec", "config_revision",
+        ]
 
 
 class CameraStreamSerializer(serializers.ModelSerializer):

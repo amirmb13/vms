@@ -1,6 +1,6 @@
 """Camera inventory API. Every mutation bumps config_revision and pushes a
 control signal to the responsible C++ Recording Server (no service restarts)."""
-from django.db.models import F
+from django.db.models import Count, F
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -14,6 +14,7 @@ from apps.orchestrator import publisher
 from .models import Camera, CameraGroup, MotionRoiGrid, RecordingServer
 from .serializers import (
     CameraGroupSerializer,
+    CameraListSerializer,
     CameraSerializer,
     CameraStreamSerializer,
     MotionRoiGridSerializer,
@@ -22,7 +23,11 @@ from .serializers import (
 
 
 class RecordingServerViewSet(viewsets.ModelViewSet):
-    queryset = RecordingServer.objects.all().order_by("hostname")
+    queryset = (
+        RecordingServer.objects.all()
+        .annotate(camera_count_annotated=Count("cameras"))
+        .order_by("hostname")
+    )
     serializer_class = RecordingServerSerializer
     permission_classes = [ReadOnlyOrManageCameras]
     lookup_field = "uuid"
@@ -48,11 +53,29 @@ class CameraGroupViewSet(viewsets.ModelViewSet):
     permission_classes = [ReadOnlyOrManageCameras]
 
     def get_queryset(self):
-        qs = CameraGroup.objects.prefetch_related("children", "cameras")
-        # ?tree=1 -> only roots (children are nested recursively)
-        if self.action == "list" and self.request.query_params.get("tree"):
-            qs = qs.filter(parent__isnull=True)
-        return qs
+        return CameraGroup.objects.annotate(
+            camera_count_annotated=Count("cameras")
+        ).order_by("id")
+
+    def list(self, request, *args, **kwargs):
+        # ?tree=1 -> full nested tree assembled from ONE query. The naive
+        # recursive serializer issued O(groups) child/count queries, which
+        # collapses with thousands of groups.
+        if request.query_params.get("tree"):
+            groups = list(self.get_queryset())
+            by_id = {}
+            for group in groups:
+                group._tree_children = []
+                by_id[group.pk] = group
+            roots = []
+            for group in groups:
+                parent = by_id.get(group.parent_id)
+                if parent is not None:
+                    parent._tree_children.append(group)
+                else:
+                    roots.append(group)
+            return Response(CameraGroupSerializer(roots, many=True).data)
+        return super().list(request, *args, **kwargs)
 
 
 class CameraViewSet(viewsets.ModelViewSet):
@@ -61,6 +84,23 @@ class CameraViewSet(viewsets.ModelViewSet):
     permission_classes = [ReadOnlyOrManageCameras]
     lookup_field = "uuid"
     filterset_fields = ["group", "recording_server", "recording_enabled", "codec"]
+
+    def get_serializer_class(self):
+        # LIST at 10k cameras must stay slim; detail/mutations keep the full
+        # serializer (URLs, ONVIF endpoint, GIS fields, ...).
+        if self.action == "list":
+            return CameraListSerializer
+        return CameraSerializer
+
+    def get_queryset(self):
+        qs = Camera.objects.all()
+        if self.action == "list":
+            # Slim serializer touches no relations — skip the JOINs entirely.
+            return qs.only(
+                "id", "uuid", "name_fa", "group_id",
+                "recording_enabled", "codec", "config_revision",
+            )
+        return qs.select_related("group", "recording_server")
 
     def perform_create(self, serializer):
         camera = serializer.save()

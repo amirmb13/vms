@@ -11,6 +11,8 @@
 // UTF-8 on the wire; QString (UTF-16) internally.
 // =============================================================================
 #include <QAbstractItemModel>
+#include <QFutureWatcher>
+#include <QJsonArray>
 #include <QNetworkAccessManager>
 #include <QString>
 
@@ -92,21 +94,36 @@ signals:
 
 private:
     QNetworkReply* authedGet(const QString& path);
+    QNetworkReply* authedGetUrl(const QUrl& url);
     void onGroupsReply(QNetworkReply* reply);
     void onCamerasReply(QNetworkReply* reply);
-    void rebuildTree();
+    void requestNextCamerasPage(const QUrl& url);
+    void scheduleRebuild();
     void setErrorFa(const QString& message);
 
     CameraTreeNode* nodeFor(const QModelIndex& index) const;
+
+    // Pure function: builds a detached tree from JSON snapshots. Runs on a
+    // QtConcurrent worker so a 10,000-camera parse never blocks the GUI
+    // thread (QJson types are implicitly shared, copies are cheap and
+    // thread-safe).
+    static std::shared_ptr<CameraTreeNode> buildTree(QJsonArray groups,
+                                                     QJsonArray cameras);
 
     QNetworkAccessManager nam_;
     QString api_base_url_ = QStringLiteral("http://127.0.0.1:8000");
     QString auth_token_;
 
-    std::unique_ptr<CameraTreeNode> root_;
-    QByteArray groups_payload_;
-    QByteArray cameras_payload_;
+    std::shared_ptr<CameraTreeNode> root_;
+    QJsonArray groups_data_;
+    QJsonArray cameras_data_;
+    // DRF-paginated /api/cameras/ pages accumulate here until `next` is null.
+    QJsonArray cameras_accumulating_;
     int pending_replies_ = 0;
+    // Builds never overlap: if fresh data lands while a build is running,
+    // one follow-up build is queued and started when the current finishes.
+    bool rebuild_queued_ = false;
+    QFutureWatcher<std::shared_ptr<CameraTreeNode>> build_watcher_;
     QString error_fa_;
 };
 

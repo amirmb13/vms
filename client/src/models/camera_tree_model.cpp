@@ -1,5 +1,13 @@
 // =============================================================================
 // CameraTreeModel implementation with offline Mock Data support.
+//
+// Scale contract (10,000+ cameras):
+//   * /api/cameras/ is DRF-paginated — every `next` page is followed and
+//     accumulated before the tree is rebuilt (a single unpaginated response
+//     for 10k cameras is both slow and memory-hostile on the server).
+//   * Tree construction (JSON -> node graph) runs on a QtConcurrent worker;
+//     only the final beginResetModel/endResetModel swap touches the GUI
+//     thread, so the wall never stutters during a directory refresh.
 // =============================================================================
 #include "models/camera_tree_model.h"
 
@@ -9,39 +17,72 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QUrl>
+#include <QtConcurrent>
 
 #include <functional>
 #include <unordered_map>
 
 namespace vms {
 
+namespace {
+
+QJsonArray extractArray(const QByteArray& payload) {
+    const QJsonDocument doc = QJsonDocument::fromJson(payload);
+    if (doc.isArray()) return doc.array();
+    if (doc.isObject()) return doc.object().value("results").toArray();
+    return {};
+}
+
+}  // namespace
+
 int CameraTreeNode::row() const { return rowInParent; }
 
 CameraTreeModel::CameraTreeModel(QObject* parent)
-    : QAbstractItemModel(parent), root_(std::make_unique<CameraTreeNode>()) {
+    : QAbstractItemModel(parent), root_(std::make_shared<CameraTreeNode>()) {
 
     // بارگذاری داده‌های اولیه تست
-    groups_payload_ = QByteArray(
+    groups_data_ = extractArray(QByteArray(
         "[\n"
         "  {\"id\": 1, \"name_fa\": \"ورودی و لابی اصلی\", \"camera_count\": 2, \"children\": []},\n"
         "  {\"id\": 2, \"name_fa\": \"محیط و پارکینگ\", \"camera_count\": 2, \"children\": [\n"
         "    {\"id\": 3, \"name_fa\": \"طبقه منفی یک (انباری)\", \"camera_count\": 1, \"children\": []}\n"
         "  ]}\n"
         "]"
-        );
+        ));
 
-    cameras_payload_ = QByteArray(
+    cameras_data_ = extractArray(QByteArray(
         "[\n"
         "  {\"id\": 101, \"uuid\": \"E:/kashfsho/moarefi/end_scene_cutted.mp4\", \"name_fa\": \"دوربین ورودی (ویدیو محلی)\", \"group\": 1, \"recording_enabled\": true},\n"
         "  {\"id\": 102, \"uuid\": \"E:/kashfsho/moarefi/MK_scene2.mp4\", \"name_fa\": \"دوربین سالن (ویدیو محلی)\", \"group\": 1, \"recording_enabled\": true},\n"
         "  {\"id\": 103, \"uuid\": \"E:/kashfsho/moarefi/MK_scene3.mp4\", \"name_fa\": \"دوربین پارکینگ (ویدیو محلی)\", \"group\": 2, \"recording_enabled\": true}\n"
         "]"
-        );
+        ));
 
-    rebuildTree();
+    // Apply a finished background build on the GUI thread. Builds never
+    // overlap; a queued follow-up is started here when needed.
+    connect(&build_watcher_,
+            &QFutureWatcher<std::shared_ptr<CameraTreeNode>>::finished, this,
+            [this] {
+                std::shared_ptr<CameraTreeNode> built = build_watcher_.result();
+                if (built) {
+                    beginResetModel();
+                    root_ = std::move(built);
+                    endResetModel();
+                }
+                if (rebuild_queued_) {
+                    rebuild_queued_ = false;
+                    scheduleRebuild();
+                }
+            });
+
+    // Initial mock data is tiny — build synchronously so the tree is ready
+    // before the first frame.
+    root_ = buildTree(groups_data_, cameras_data_);
 }
 
-CameraTreeModel::~CameraTreeModel() = default;
+CameraTreeModel::~CameraTreeModel() {
+    build_watcher_.waitForFinished();
+}
 
 // --- QAbstractItemModel ------------------------------------------------------
 
@@ -121,7 +162,11 @@ void CameraTreeModel::setAuthToken(const QString& jwtAccessToken) {
 }
 
 QNetworkReply* CameraTreeModel::authedGet(const QString& path) {
-    QNetworkRequest request(QUrl(api_base_url_ + path));
+    return authedGetUrl(QUrl(api_base_url_ + path));
+}
+
+QNetworkReply* CameraTreeModel::authedGetUrl(const QUrl& url) {
+    QNetworkRequest request(url);
     request.setRawHeader("Accept", "application/json");
     if (!auth_token_.isEmpty()) {
         request.setRawHeader("Authorization",
@@ -144,6 +189,7 @@ void CameraTreeModel::reload() {
 
     if (pending_replies_ > 0) return;  // fetch already in flight
     setErrorFa({});
+    cameras_accumulating_ = QJsonArray();
     pending_replies_ = 2;
     emit loadingChanged();
 
@@ -159,40 +205,60 @@ void CameraTreeModel::reload() {
 void CameraTreeModel::onGroupsReply(QNetworkReply* reply) {
     reply->deleteLater();
     if (reply->error() == QNetworkReply::NoError) {
-        groups_payload_ = reply->readAll();
+        groups_data_ = extractArray(reply->readAll());
     }
     if (--pending_replies_ == 0) {
         emit loadingChanged();
-        rebuildTree();
+        scheduleRebuild();
     }
+}
+
+void CameraTreeModel::requestNextCamerasPage(const QUrl& url) {
+    QNetworkReply* next = authedGetUrl(url);
+    connect(next, &QNetworkReply::finished, this,
+            [this, next] { onCamerasReply(next); });
 }
 
 void CameraTreeModel::onCamerasReply(QNetworkReply* reply) {
     reply->deleteLater();
+
+    bool more_pages = false;
     if (reply->error() == QNetworkReply::NoError) {
-        cameras_payload_ = reply->readAll();
+        const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+        if (doc.isArray()) {
+            // Unpaginated server (legacy) — single shot.
+            cameras_accumulating_ = doc.array();
+        } else if (doc.isObject()) {
+            const QJsonObject obj = doc.object();
+            const QJsonArray page = obj.value("results").toArray();
+            for (const QJsonValue& v : page) cameras_accumulating_.append(v);
+
+            const QJsonValue next = obj.value("next");
+            if (next.isString() && !next.toString().isEmpty()) {
+                // Follow DRF pagination until exhausted. pending_replies_
+                // stays >0 so `loading` remains true and reload() is
+                // re-entrancy-safe for the whole multi-page fetch.
+                more_pages = true;
+                requestNextCamerasPage(QUrl(next.toString()));
+            }
+        }
     }
+
+    if (more_pages) return;
+
+    cameras_data_ = cameras_accumulating_;
+    cameras_accumulating_ = QJsonArray();
     if (--pending_replies_ == 0) {
         emit loadingChanged();
-        rebuildTree();
+        scheduleRebuild();
     }
 }
 
 // --- Tree assembly -----------------------------------------------------------
 
-namespace {
-
-QJsonArray extractArray(const QByteArray& payload) {
-    const QJsonDocument doc = QJsonDocument::fromJson(payload);
-    if (doc.isArray()) return doc.array();
-    if (doc.isObject()) return doc.object().value("results").toArray();
-    return {};
-}
-
-}  // namespace
-
-void CameraTreeModel::rebuildTree() {
-    auto new_root = std::make_unique<CameraTreeNode>();
+std::shared_ptr<CameraTreeNode> CameraTreeModel::buildTree(QJsonArray groups,
+                                                           QJsonArray cameras) {
+    auto new_root = std::make_shared<CameraTreeNode>();
 
     std::unordered_map<int, CameraTreeNode*> group_index;
 
@@ -214,12 +280,10 @@ void CameraTreeModel::rebuildTree() {
             parent->children.push_back(std::move(node));
         };
 
-    const QJsonArray groups = extractArray(groups_payload_);
     for (const QJsonValue& value : groups) {
         add_group(value.toObject(), new_root.get());
     }
 
-    const QJsonArray cameras = extractArray(cameras_payload_);
     for (const QJsonValue& value : cameras) {
         const QJsonObject obj = value.toObject();
         const int group_id = obj.value("group").toInt(-1);
@@ -238,9 +302,19 @@ void CameraTreeModel::rebuildTree() {
         parent->children.push_back(std::move(leaf));
     }
 
-    beginResetModel();
-    root_ = std::move(new_root);
-    endResetModel();
+    return new_root;
+}
+
+void CameraTreeModel::scheduleRebuild() {
+    if (build_watcher_.isRunning()) {
+        rebuild_queued_ = true;  // coalesce: at most one queued follow-up
+        return;
+    }
+    // QJsonArray copies are implicitly shared and detach-on-write, so the
+    // worker owns immutable snapshots — no locking required.
+    build_watcher_.setFuture(
+        QtConcurrent::run(&CameraTreeModel::buildTree, groups_data_,
+                          cameras_data_));
 }
 
 }  // namespace vms

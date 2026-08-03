@@ -6,6 +6,7 @@ audit entry when free archive storage drops below the configured floor.
 from __future__ import annotations
 
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import grpc
 from django.conf import settings
@@ -40,20 +41,42 @@ class Command(BaseCommand):
                 break
             time.sleep(interval)
 
+    @staticmethod
+    def _probe(server, timeout: float):
+        """Network-only gRPC probe, safe to run off the main thread.
+
+        Returns (server, report_or_None). Database writes happen back on the
+        main thread so worker threads never touch ORM connections.
+        """
+        try:
+            with grpc.insecure_channel(server.grpc_endpoint) as channel:
+                stub = pb2_grpc.RecordingServerControlStub(channel)
+                report = stub.GetServerHealth(pb2.HealthRequest(), timeout=timeout)
+            return server, report
+        except grpc.RpcError:
+            return server, None
+
     def _poll_all(self, storage_floor_gb: float) -> None:
         from apps.audit.models import AuditLog
         from apps.cameras.models import RecordingServer
 
         timeout = getattr(settings, "RECORDING_SERVER_GRPC_TIMEOUT_S", 3.0)
 
-        for server in RecordingServer.objects.all():
-            try:
-                with grpc.insecure_channel(server.grpc_endpoint) as channel:
-                    stub = pb2_grpc.RecordingServerControlStub(channel)
-                    report = stub.GetServerHealth(
-                        pb2.HealthRequest(), timeout=timeout
-                    )
-            except grpc.RpcError:
+        servers = list(RecordingServer.objects.all())
+        if not servers:
+            return
+
+        # A serial sweep pays the full 3s timeout per unreachable node: with
+        # dozens of recording servers (10k cameras / ~200 cams per node) one
+        # sweep could exceed the poll interval itself. Probe concurrently;
+        # persist results serially on the main thread.
+        with ThreadPoolExecutor(max_workers=min(32, len(servers))) as pool:
+            results = list(
+                pool.map(lambda s: self._probe(s, timeout), servers)
+            )
+
+        for server, report in results:
+            if report is None:
                 if server.is_online:
                     server.is_online = False
                     server.save(update_fields=["is_online"])
