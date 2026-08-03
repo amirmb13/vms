@@ -8,11 +8,28 @@ StreamController::StreamController(QObject* parent) : QObject(parent) {}
 
 StreamController::~StreamController() { detachAll(); }
 
+namespace {
+
+// A "direct source" plays as-is instead of going through the Media Relay:
+// full URLs (rtsp/http/file/...), Windows drive paths ("E:/video.mp4" or
+// "E:\video.mp4"), and absolute POSIX paths ("/media/video.mp4").
+// Mock/offline camera entries use local file paths as their uuid; routing
+// those through the relay produced an unopenable URL and a black cell.
+bool isDirectSource(const QString& source) {
+    if (source.contains(QLatin1String("://"))) return true;
+    if (source.startsWith(QLatin1Char('/'))) return true;
+    if (source.size() > 2 && source.at(1) == QLatin1Char(':') &&
+        (source.at(2) == QLatin1Char('/') || source.at(2) == QLatin1Char('\\'))) {
+        return true;
+    }
+    return false;
+}
+
+}  // namespace
+
 QString StreamController::liveUrl(const QString& cameraUuid,
                                   const QString& profile) const {
-    if (cameraUuid.startsWith(QLatin1String("http://")) ||
-        cameraUuid.startsWith(QLatin1String("https://")) ||
-        cameraUuid.startsWith(QLatin1String("rtsp://"))) {
+    if (isDirectSource(cameraUuid)) {
         return cameraUuid;
     }
     return QStringLiteral("rtsp://%1:8554/live/%2/%3")
@@ -21,8 +38,13 @@ QString StreamController::liveUrl(const QString& cameraUuid,
 
 QString StreamController::archiveUrl(const QString& cameraUuid,
                                      quint64 startUtcUs) const {
+    // Local files have no relay-side archive endpoint; play the file itself
+    // (startPlayback seeks within it).
+    if (isDirectSource(cameraUuid)) {
+        return cameraUuid;
+    }
     return QStringLiteral("rtsp://%1:8554/archive/%2?start=%3")
-    .arg(relay_host_, cameraUuid, QString::number(startUtcUs));
+        .arg(relay_host_, cameraUuid, QString::number(startUtcUs));
 }
 
 std::shared_ptr<VideoDecoder> StreamController::getOrCreateDecoder(int cellIndex) {
@@ -73,8 +95,15 @@ void StreamController::switchProfile(int cellIndex, const QString& profile) {
     CellSession& s = it->second;
     if (s.profile == profile) return;
 
+    // For direct sources (local files, explicit URLs) every profile maps to
+    // the same URL — record the profile but skip the pointless keyframe-align
+    // stream restart, which would blank the cell for no benefit.
+    const QString currentUrl = liveUrl(s.cameraUuid, s.profile);
+    const QString nextUrl = liveUrl(s.cameraUuid, profile);
     s.profile = profile;
-    s.decoder->switchTo(liveUrl(s.cameraUuid, profile));
+    if (nextUrl == currentUrl) return;
+
+    s.decoder->switchTo(nextUrl);
 }
 
 void StreamController::attachPlayback(int cellIndex, const QString& cameraUuid,

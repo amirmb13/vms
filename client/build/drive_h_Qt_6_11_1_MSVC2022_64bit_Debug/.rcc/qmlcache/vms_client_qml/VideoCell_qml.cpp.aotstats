@@ -10,7 +10,7 @@
                             "column": 26,
                             "durationMicroseconds": 0,
                             "functionName": "onCameraUuidChanged",
-                            "line": 28,
+                            "line": 33,
                             "message": ""
                         },
                         {
@@ -18,7 +18,7 @@
                             "column": 25,
                             "durationMicroseconds": 0,
                             "functionName": "onCellIndexChanged",
-                            "line": 29,
+                            "line": 34,
                             "message": ""
                         },
                         {
@@ -26,7 +26,7 @@
                             "column": 9,
                             "durationMicroseconds": 0,
                             "functionName": "onPreferredProfileChanged",
-                            "line": 31,
+                            "line": 36,
                             "message": "Cannot access value for name streamController"
                         },
                         {
@@ -34,7 +34,7 @@
                             "column": 5,
                             "durationMicroseconds": 0,
                             "functionName": "reattach",
-                            "line": 34,
+                            "line": 39,
                             "message": "Cannot access value for name streamController"
                         },
                         {
@@ -42,7 +42,7 @@
                             "column": 17,
                             "durationMicroseconds": 0,
                             "functionName": "target",
-                            "line": 43,
+                            "line": 51,
                             "message": "Cannot access value for name streamController"
                         },
                         {
@@ -50,7 +50,15 @@
                             "column": 9,
                             "durationMicroseconds": 0,
                             "functionName": "onCellFramePresented",
-                            "line": 44,
+                            "line": 52,
+                            "message": "Functions without type annotations won't be compiled"
+                        },
+                        {
+                            "codegenResult": 2,
+                            "column": 9,
+                            "durationMicroseconds": 0,
+                            "functionName": "onCellStatusChanged",
+                            "line": 58,
                             "message": "Functions without type annotations won't be compiled"
                         },
                         {
@@ -58,7 +66,7 @@
                             "column": 19,
                             "durationMicroseconds": 0,
                             "functionName": "fillMode",
-                            "line": 53,
+                            "line": 67,
                             "message": ""
                         },
                         {
@@ -66,15 +74,39 @@
                             "column": 23,
                             "durationMicroseconds": 0,
                             "functionName": "fill",
-                            "line": 52,
+                            "line": 66,
                             "message": ""
+                        },
+                        {
+                            "codegenResult": 2,
+                            "column": 18,
+                            "durationMicroseconds": 0,
+                            "functionName": "visible",
+                            "line": 74,
+                            "message": "Could not find property \"visible\"."
+                        },
+                        {
+                            "codegenResult": 2,
+                            "column": 15,
+                            "durationMicroseconds": 0,
+                            "functionName": "text",
+                            "line": 75,
+                            "message": "Could not find property \"text\"."
+                        },
+                        {
+                            "codegenResult": 2,
+                            "column": 27,
+                            "durationMicroseconds": 0,
+                            "functionName": "centerIn",
+                            "line": 73,
+                            "message": "Could not find property \"centerIn\"."
                         },
                         {
                             "codegenResult": 2,
                             "column": 16,
                             "durationMicroseconds": 0,
                             "functionName": "width",
-                            "line": 64,
+                            "line": 89,
                             "message": "Cannot retrieve a non-object type by ID: overlayLabel"
                         },
                         {
@@ -82,7 +114,7 @@
                             "column": 17,
                             "durationMicroseconds": 0,
                             "functionName": "height",
-                            "line": 65,
+                            "line": 90,
                             "message": "Cannot retrieve a non-object type by ID: overlayLabel"
                         },
                         {
@@ -90,7 +122,7 @@
                             "column": 25,
                             "durationMicroseconds": 0,
                             "functionName": "bottom",
-                            "line": 58,
+                            "line": 83,
                             "message": ""
                         },
                         {
@@ -98,7 +130,7 @@
                             "column": 24,
                             "durationMicroseconds": 0,
                             "functionName": "right",
-                            "line": 59,
+                            "line": 84,
                             "message": ""
                         },
                         {
@@ -106,7 +138,7 @@
                             "column": 19,
                             "durationMicroseconds": 0,
                             "functionName": "text",
-                            "line": 73,
+                            "line": 98,
                             "message": "Could not find property \"text\"."
                         },
                         {
@@ -114,7 +146,7 @@
                             "column": 31,
                             "durationMicroseconds": 0,
                             "functionName": "centerIn",
-                            "line": 69,
+                            "line": 94,
                             "message": "Could not find property \"centerIn\"."
                         },
                         {
@@ -122,7 +154,7 @@
                             "column": 24,
                             "durationMicroseconds": 0,
                             "functionName": "gesturePolicy",
-                            "line": 81,
+                            "line": 106,
                             "message": ""
                         },
                         {
@@ -130,7 +162,7 @@
                             "column": 25,
                             "durationMicroseconds": 0,
                             "functionName": "onDoubleTapped",
-                            "line": 82,
+                            "line": 107,
                             "message": "Cannot access value for name streamController"
                         },
                         {
@@ -138,7 +170,7 @@
                             "column": 24,
                             "durationMicroseconds": 0,
                             "functionName": "onLongPressed",
-                            "line": 90,
+                            "line": 115,
                             "message": "Cannot access value for name syncPlayback"
                         },
                         {
@@ -146,7 +178,7 @@
                             "column": 18,
                             "durationMicroseconds": 0,
                             "functionName": "visible",
-                            "line": 98,
+                            "line": 123,
                             "message": "Cannot retrieve a non-object type by ID: pipWorker"
                         },
                         {
@@ -154,7 +186,7 @@
                             "column": 16,
                             "durationMicroseconds": 0,
                             "functionName": "width",
-                            "line": 99,
+                            "line": 124,
                             "message": ""
                         },
                         {
@@ -162,7 +194,7 @@
                             "column": 17,
                             "durationMicroseconds": 0,
                             "functionName": "height",
-                            "line": 100,
+                            "line": 125,
                             "message": ""
                         },
                         {
@@ -170,7 +202,7 @@
                             "column": 9,
                             "durationMicroseconds": 0,
                             "functionName": "openAt",
-                            "line": 110,
+                            "line": 135,
                             "message": "Functions without type annotations won't be compiled"
                         },
                         {
@@ -178,7 +210,7 @@
                             "column": 22,
                             "durationMicroseconds": 0,
                             "functionName": "top",
-                            "line": 101,
+                            "line": 126,
                             "message": ""
                         },
                         {
@@ -186,7 +218,7 @@
                             "column": 23,
                             "durationMicroseconds": 0,
                             "functionName": "left",
-                            "line": 102,
+                            "line": 127,
                             "message": ""
                         },
                         {
@@ -194,7 +226,7 @@
                             "column": 27,
                             "durationMicroseconds": 0,
                             "functionName": "fill",
-                            "line": 117,
+                            "line": 142,
                             "message": ""
                         },
                         {
@@ -202,7 +234,7 @@
                             "column": 24,
                             "durationMicroseconds": 0,
                             "functionName": "width",
-                            "line": 121,
+                            "line": 146,
                             "message": ""
                         },
                         {
@@ -210,7 +242,7 @@
                             "column": 34,
                             "durationMicroseconds": 0,
                             "functionName": "layoutDirection",
-                            "line": 124,
+                            "line": 149,
                             "message": ""
                         },
                         {
@@ -218,7 +250,7 @@
                             "column": 45,
                             "durationMicroseconds": 0,
                             "functionName": "verticalCenter",
-                            "line": 130,
+                            "line": 155,
                             "message": "Could not find property \"verticalCenter\"."
                         },
                         {
@@ -226,7 +258,7 @@
                             "column": 27,
                             "durationMicroseconds": 0,
                             "functionName": "text",
-                            "line": 133,
+                            "line": 158,
                             "message": "Could not find property \"text\"."
                         },
                         {
@@ -234,7 +266,7 @@
                             "column": 45,
                             "durationMicroseconds": 0,
                             "functionName": "verticalCenter",
-                            "line": 137,
+                            "line": 162,
                             "message": "Could not find property \"verticalCenter\"."
                         },
                         {
@@ -242,7 +274,7 @@
                             "column": 31,
                             "durationMicroseconds": 0,
                             "functionName": "width",
-                            "line": 139,
+                            "line": 164,
                             "message": ""
                         },
                         {
@@ -250,7 +282,7 @@
                             "column": 32,
                             "durationMicroseconds": 0,
                             "functionName": "onClicked",
-                            "line": 143,
+                            "line": 168,
                             "message": "Could not find signal \"clicked\"."
                         },
                         {
@@ -258,7 +290,7 @@
                             "column": 24,
                             "durationMicroseconds": 0,
                             "functionName": "width",
-                            "line": 149,
+                            "line": 174,
                             "message": ""
                         },
                         {
@@ -266,7 +298,7 @@
                             "column": 25,
                             "durationMicroseconds": 0,
                             "functionName": "height",
-                            "line": 150,
+                            "line": 175,
                             "message": ""
                         },
                         {
@@ -274,7 +306,7 @@
                             "column": 27,
                             "durationMicroseconds": 0,
                             "functionName": "fillMode",
-                            "line": 151,
+                            "line": 176,
                             "message": ""
                         },
                         {
@@ -282,7 +314,7 @@
                             "column": 28,
                             "durationMicroseconds": 0,
                             "functionName": "onCompleted",
-                            "line": 156,
+                            "line": 181,
                             "message": ""
                         },
                         {
@@ -290,7 +322,7 @@
                             "column": 30,
                             "durationMicroseconds": 0,
                             "functionName": "onDestruction",
-                            "line": 157,
+                            "line": 182,
                             "message": "Cannot retrieve a non-object type by ID: pipWorker"
                         }
                     ],
