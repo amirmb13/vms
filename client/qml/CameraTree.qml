@@ -79,24 +79,23 @@ Rectangle {
                 }
                 HoverHandler { id: hover }
 
-                // Expand/collapse arrow — right-anchored, rotates smoothly:
-                // ▾ points down when expanded, ◂ points left (RTL "closed")
-                // when collapsed. Rendered only for group rows with children.
+                // Expand/collapse arrow — right-anchored. ▾ when expanded,
+                // ◂ (pointing left = RTL "closed") when collapsed. The glyph
+                // swaps directly with no rotation animation: animated
+                // rotation caused spurious spins when TreeView reused
+                // delegates during expand/collapse. The arrow deliberately
+                // has NO TapHandler of its own — the row-level handler below
+                // covers the whole row. A second handler here made a single
+                // click toggle the group twice (open then instantly close).
                 Text {
                     id: arrow
                     visible: cell.isTreeNode && cell.hasChildren
                     anchors.right: parent.right
                     anchors.rightMargin: 8 + cell.depth * 16
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "\u25be"          // ▾
+                    text: cell.expanded ? "\u25be" : "\u25c2"   // ▾ / ◂
                     color: "#8b949e"
                     font.pixelSize: 14
-                    rotation: cell.expanded ? 0 : -90
-                    Behavior on rotation { NumberAnimation { duration: 120 } }
-
-                    TapHandler {
-                        onTapped: cell.treeView.toggleExpanded(cell.row)
-                    }
                 }
 
                 Row {
@@ -129,10 +128,14 @@ Rectangle {
                     }
                 }
 
-                // Groups: single click anywhere on the row toggles expansion.
-                // Cameras: double-click places the camera in the focused cell.
+                // Groups: single click anywhere on the row (arrow included)
+                // toggles expansion. Cameras: double-click places the camera
+                // in the focused cell. singleTapped (not tapped) is used so a
+                // camera double-click doesn't also fire two stray single-tap
+                // events, and a group double-click doesn't toggle twice
+                // (open + instantly close again).
                 TapHandler {
-                    onTapped: {
+                    onSingleTapped: {
                         if (!cell.isCamera && cell.hasChildren)
                             cell.treeView.toggleExpanded(cell.row)
                     }
