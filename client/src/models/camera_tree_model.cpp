@@ -15,13 +15,7 @@
 
 namespace vms {
 
-int CameraTreeNode::row() const {
-    if (!parent) return 0;
-    for (size_t i = 0; i < parent->children.size(); ++i) {
-        if (parent->children[i].get() == this) return static_cast<int>(i);
-    }
-    return 0;
-}
+int CameraTreeNode::row() const { return rowInParent; }
 
 CameraTreeModel::CameraTreeModel(QObject* parent)
     : QAbstractItemModel(parent), root_(std::make_unique<CameraTreeNode>()) {
@@ -216,6 +210,7 @@ void CameraTreeModel::rebuildTree() {
             for (const QJsonValue& child : children) {
                 add_group(child.toObject(), node.get());
             }
+            node->rowInParent = static_cast<int>(parent->children.size());
             parent->children.push_back(std::move(node));
         };
 
@@ -239,6 +234,7 @@ void CameraTreeModel::rebuildTree() {
         leaf->recordingEnabled = obj.value("recording_enabled").toBool(true);
         leaf->groupId = group_id;
         leaf->parent = parent;
+        leaf->rowInParent = static_cast<int>(parent->children.size());
         parent->children.push_back(std::move(leaf));
     }
 

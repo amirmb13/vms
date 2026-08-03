@@ -14,6 +14,7 @@
 #include <QObject>
 #include <QDateTime>
 #include <QString>
+#include <QTimeZone>
 
 namespace vms {
 

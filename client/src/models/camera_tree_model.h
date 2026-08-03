@@ -38,6 +38,11 @@ struct CameraTreeNode {
     CameraTreeNode* parent = nullptr;
     std::vector<std::unique_ptr<CameraTreeNode>> children;
 
+    // Cached index inside parent->children, assigned at build time.
+    // Computing it by linear search made parent() O(n) per call — with a
+    // 10,000-camera directory the TreeView degraded to O(n²).
+    int rowInParent = 0;
+
     int row() const;
 };
 

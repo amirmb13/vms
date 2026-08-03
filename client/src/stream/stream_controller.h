@@ -35,6 +35,13 @@ public:
     void broadcastPaused(bool paused);
     void broadcastRate(double rate);
 
+    // Drift-aware re-sync: only playback sessions whose last presented frame
+    // deviates from the master clock by more than toleranceUs get a seek.
+    // In-sync decoders keep playing untouched — a blind broadcast seek forces
+    // av_seek_frame + buffer flush on EVERY engine and stutters the whole
+    // wall periodically.
+    void resyncDrifted(quint64 masterUs, quint64 toleranceUs);
+
     Q_INVOKABLE QString profileForCellSize(qreal cellWidth, qreal gridWidth) const;
 
     QString relayHost() const { return relay_host_; }
@@ -51,6 +58,11 @@ private:
         QString cameraUuid;
         QString profile;
         bool playbackMode = false;
+
+        // Last presented frame timestamp (drift detection for sync playback).
+        quint64 lastPresentedUs = 0;
+        // Wall-clock of the last cellFramePresented emission (signal throttle).
+        qint64 lastEmitMs = 0;
     };
 
     QString liveUrl(const QString& cameraUuid, const QString& profile) const;

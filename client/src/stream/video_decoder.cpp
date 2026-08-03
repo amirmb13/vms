@@ -7,15 +7,46 @@
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libavutil/hwcontext.h>
 #include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
 }
 
+#include <algorithm>
 #include <chrono>
 
 namespace vms {
+namespace {
 
-VideoDecoder::VideoDecoder(QObject* parent) : QObject(parent) {}
+// Abort blocking FFmpeg I/O (open / read / seek) the moment running_ drops.
+// Without this an RTSP open or read can pin the worker thread for the full
+// 3s socket timeout while StreamController::detach() joins it — a layout
+// switch across a large wall froze the GUI for seconds per cell.
+int interruptCallback(void* opaque) {
+    const auto* running = static_cast<const std::atomic<bool>*>(opaque);
+    return running->load(std::memory_order_relaxed) ? 0 : 1;
+}
+
+// GUI-thread backpressure: at most this many frames may sit in the GUI event
+// queue per cell. Beyond it the decoder drops frames instead of flooding the
+// event loop — bounded latency and bounded memory under load, which is the
+// standard enterprise-VMS policy (drop, never queue unbounded).
+constexpr int kMaxFramesInFlight = 2;
+
+// Cap decode threads by resolution. thread_count = 0 (auto) spawns one
+// thread per CPU core PER DECODER; a 64-cell wall on a 16-core machine
+// would create ~1000 decode threads. Sub-streams need no frame threading.
+int threadCountForHeight(int height) {
+    if (height >= 1440) return 4;
+    if (height >= 720) return 2;
+    return 1;
+}
+
+}  // namespace
+
+VideoDecoder::VideoDecoder(QObject* parent)
+    : QObject(parent),
+      frames_in_flight_(std::make_shared<std::atomic<int>>(0)) {}
 
 VideoDecoder::~VideoDecoder() { stop(); }
 
@@ -48,6 +79,8 @@ void VideoDecoder::seekTo(quint64 utcUs) { seek_target_us_.store(utcUs); }
 void VideoDecoder::setPaused(bool paused) { paused_.store(paused); }
 void VideoDecoder::setRate(double rate) { rate_.store(rate); }
 
+void VideoDecoder::requestStop() { running_.store(false); }
+
 void VideoDecoder::stop() {
     running_.store(false);
     if (worker_.joinable()) worker_.join();
@@ -58,12 +91,82 @@ void VideoDecoder::stop() {
     emit decodingChanged();
 }
 
+// --- Hardware decode negotiation ----------------------------------------------
+AVPixelFormat VideoDecoder::getHwFormat(AVCodecContext* ctx,
+                                        const AVPixelFormat* formats) {
+    const auto* self = static_cast<const VideoDecoder*>(ctx->opaque);
+    for (const AVPixelFormat* p = formats; *p != AV_PIX_FMT_NONE; ++p) {
+        if (*p == self->hw_pix_fmt_) return *p;
+    }
+    // Hardware surface unavailable for this stream — software fallback.
+    return formats[0];
+}
+
+bool VideoDecoder::initHardwareDecoder(AVCodecContext* codec,
+                                       const AVCodec* dec) {
+    hw_pix_fmt_ = AV_PIX_FMT_NONE;
+
+    // Platform-preferred device types, best first. GPU decode is what lets
+    // enterprise walls (Genetec-class) run 16–64 simultaneous streams: the
+    // CPU only demuxes while the video engine decodes.
+    static const AVHWDeviceType kPreferred[] = {
+#if defined(_WIN32)
+        AV_HWDEVICE_TYPE_D3D11VA,
+        AV_HWDEVICE_TYPE_DXVA2,
+#elif defined(__APPLE__)
+        AV_HWDEVICE_TYPE_VIDEOTOOLBOX,
+#else
+        AV_HWDEVICE_TYPE_VAAPI,
+        AV_HWDEVICE_TYPE_CUDA,
+#endif
+    };
+
+    for (AVHWDeviceType type : kPreferred) {
+        for (int i = 0;; ++i) {
+            const AVCodecHWConfig* cfg = avcodec_get_hw_config(dec, i);
+            if (!cfg) break;
+            if (!(cfg->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX) ||
+                cfg->device_type != type) {
+                continue;
+            }
+            AVBufferRef* device = nullptr;
+            if (av_hwdevice_ctx_create(&device, type, nullptr, nullptr, 0) < 0)
+                continue;
+            // Ownership of the device ref transfers to the codec context;
+            // avcodec_free_context() releases it.
+            codec->hw_device_ctx = device;
+            codec->opaque = this;
+            codec->get_format = &VideoDecoder::getHwFormat;
+            hw_pix_fmt_ = cfg->pix_fmt;
+            return true;
+        }
+    }
+    return false;
+}
+
 // --- Input setup --------------------------------------------------------------
 bool VideoDecoder::openInput(const QString& url, AVFormatContext*& fmt,
                              AVCodecContext*& codec, int& videoStream) {
-    fmt = nullptr;
-    AVDictionary* opts = nullptr;
+    codec = nullptr;
+    fmt = avformat_alloc_context();
+    if (!fmt) return false;
 
+    // Interrupt callback: makes every blocking FFmpeg call abort promptly
+    // when stop()/requestStop() flips running_.
+    fmt->interrupt_callback.callback = interruptCallback;
+    fmt->interrupt_callback.opaque = &running_;
+
+    const bool isNetwork = url.contains(QLatin1String("://"));
+    if (isNetwork) {
+        // Bound stream probing: FFmpeg's defaults can analyze several
+        // seconds of stream before the first frame appears. 0.5s / 512KB is
+        // plenty for H.264/H.265 RTSP and makes large layout switches show
+        // video near-instantly in every cell.
+        fmt->probesize = 512 * 1024;
+        fmt->max_analyze_duration = 500 * 1000;  // µs
+    }
+
+    AVDictionary* opts = nullptr;
     av_dict_set(&opts, "rtsp_transport", "tcp", 0);
     av_dict_set(&opts, "stimeout", "3000000", 0);
     av_dict_set(&opts, "timeout", "3000000", 0);
@@ -71,71 +174,126 @@ bool VideoDecoder::openInput(const QString& url, AVFormatContext*& fmt,
 
     if (avformat_open_input(&fmt, url.toUtf8().constData(), nullptr, &opts) < 0) {
         av_dict_free(&opts);
+        fmt = nullptr;  // avformat_open_input frees the context on failure
         setStatusFa(QStringLiteral("خطا در باز کردن استریم"));
         return false;
     }
     av_dict_free(&opts);
 
-    if (avformat_find_stream_info(fmt, nullptr) < 0) return false;
+    if (avformat_find_stream_info(fmt, nullptr) < 0) {
+        avformat_close_input(&fmt);
+        return false;
+    }
 
     videoStream = av_find_best_stream(fmt, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
-    if (videoStream < 0) return false;
+    if (videoStream < 0) {
+        avformat_close_input(&fmt);
+        return false;
+    }
 
-    const AVCodec* dec = avcodec_find_decoder(fmt->streams[videoStream]->codecpar->codec_id);
-    if (!dec) return false;
+    const AVCodec* dec =
+        avcodec_find_decoder(fmt->streams[videoStream]->codecpar->codec_id);
+    if (!dec) {
+        avformat_close_input(&fmt);
+        return false;
+    }
 
     codec = avcodec_alloc_context3(dec);
+    if (!codec) {
+        avformat_close_input(&fmt);
+        return false;
+    }
     avcodec_parameters_to_context(codec, fmt->streams[videoStream]->codecpar);
 
-    // دکود نرم‌افزاری چندتردی برای پایداری کامل
-    codec->thread_count = 0;
-    codec->thread_type = FF_THREAD_FRAME;
+    // GPU decode first; capped software frame-threading as the fallback.
+    const bool hw = initHardwareDecoder(codec, dec);
+    if (!hw) {
+        codec->thread_count = threadCountForHeight(codec->height);
+        codec->thread_type = FF_THREAD_FRAME;
+    }
 
-    setStatusFa(QStringLiteral("رمزگشایی فعال شد"));
-    return avcodec_open2(codec, dec, nullptr) >= 0;
+    if (avcodec_open2(codec, dec, nullptr) < 0) {
+        avcodec_free_context(&codec);
+        avformat_close_input(&fmt);
+        return false;
+    }
+
+    setStatusFa(hw ? QStringLiteral("رمزگشایی سخت‌افزاری فعال شد")
+                   : QStringLiteral("رمزگشایی فعال شد"));
+    return true;
 }
 
-bool VideoDecoder::initHardwareDecoder(AVCodecContext*) {
-    return false;
-}
-
-// --- Frame presentation (Thread-safe; each decoder owns its own sink) --------
+// --- Frame presentation (thread-safe; each decoder owns its own sink) --------
 void VideoDecoder::presentFrame(AVFrame* frame, quint64 utcUs) {
     if (!sink_ || !frame || frame->width <= 0 || frame->height <= 0 ||
         frame->format == AV_PIX_FMT_NONE || !frame->data[0]) return;
 
+    // Backpressure: if the GUI thread hasn't consumed the previous frames
+    // yet, drop this one. Queuing unboundedly grows latency and memory until
+    // the whole wall stalls — dropping keeps every cell realtime.
+    if (frames_in_flight_->load(std::memory_order_acquire) >= kMaxFramesInFlight)
+        return;
+
     const int width = frame->width;
     const int height = frame->height;
+    const auto srcFmt = static_cast<AVPixelFormat>(frame->format);
 
-    // Cache the scaler across frames (only this worker thread touches sws_).
-    // Recreating SwsContext per frame costs milliseconds per call and cripples
-    // multi-camera walls.
-    sws_ = sws_getCachedContext(sws_, width, height,
-                                static_cast<AVPixelFormat>(frame->format),
-                                width, height, AV_PIX_FMT_RGBA,
-                                SWS_FAST_BILINEAR, nullptr, nullptr, nullptr);
-    if (!sws_) return;
+    // Zero-conversion path: Qt's RHI video pipeline consumes planar YUV
+    // natively and does YUV→RGB in the fragment shader on the GPU. Running
+    // sws_scale to RGBA on the CPU for every frame of every cell quadruples
+    // memory traffic and burns cores — only rare formats fall back to it.
+    QVideoFrameFormat::PixelFormat qtFmt = QVideoFrameFormat::Format_Invalid;
+    if (srcFmt == AV_PIX_FMT_NV12)
+        qtFmt = QVideoFrameFormat::Format_NV12;
+    else if (srcFmt == AV_PIX_FMT_YUV420P || srcFmt == AV_PIX_FMT_YUVJ420P)
+        qtFmt = QVideoFrameFormat::Format_YUV420P;
 
-    // Scale straight into the QVideoFrame's own buffer: zero intermediate
-    // copies. Each QVideoFrame owns its memory, so cells stay fully isolated.
-    QVideoFrameFormat fmtDesc(QSize(width, height),
-                              QVideoFrameFormat::Format_RGBA8888);
-    QVideoFrame vf(fmtDesc);
-    if (!vf.isValid() || !vf.map(QVideoFrame::WriteOnly)) return;
+    QVideoFrame vf;
+    if (qtFmt != QVideoFrameFormat::Format_Invalid) {
+        QVideoFrameFormat fmtDesc(QSize(width, height), qtFmt);
+        vf = QVideoFrame(fmtDesc);
+        if (!vf.isValid() || !vf.map(QVideoFrame::WriteOnly)) return;
 
-    uint8_t* dst[4] = { vf.bits(0), nullptr, nullptr, nullptr };
-    int dstStride[4] = { vf.bytesPerLine(0), 0, 0, 0 };
-    sws_scale(sws_, frame->data, frame->linesize, 0, height, dst, dstStride);
-    vf.unmap();
+        const int planeCount = (qtFmt == QVideoFrameFormat::Format_NV12) ? 2 : 3;
+        for (int p = 0; p < planeCount; ++p) {
+            const int planeHeight = (p == 0) ? height : height / 2;
+            const int copyBytes =
+                std::min(vf.bytesPerLine(p), frame->linesize[p]);
+            av_image_copy_plane(vf.bits(p), vf.bytesPerLine(p),
+                                frame->data[p], frame->linesize[p],
+                                copyBytes, planeHeight);
+        }
+        vf.unmap();
+    } else {
+        // Fallback: CPU conversion for uncommon pixel formats.
+        sws_ = sws_getCachedContext(sws_, width, height, srcFmt,
+                                    width, height, AV_PIX_FMT_RGBA,
+                                    SWS_FAST_BILINEAR, nullptr, nullptr, nullptr);
+        if (!sws_) return;
+
+        QVideoFrameFormat fmtDesc(QSize(width, height),
+                                  QVideoFrameFormat::Format_RGBA8888);
+        vf = QVideoFrame(fmtDesc);
+        if (!vf.isValid() || !vf.map(QVideoFrame::WriteOnly)) return;
+
+        uint8_t* dst[4] = { vf.bits(0), nullptr, nullptr, nullptr };
+        int dstStride[4] = { vf.bytesPerLine(0), 0, 0, 0 };
+        sws_scale(sws_, frame->data, frame->linesize, 0, height, dst, dstStride);
+        vf.unmap();
+    }
 
     // Guard BOTH the sink and this decoder: the queued lambda may run on the
-    // GUI thread after either has been destroyed.
+    // GUI thread after either has been destroyed. The in-flight counter is a
+    // shared_ptr so the decrement stays valid regardless.
+    frames_in_flight_->fetch_add(1, std::memory_order_release);
     QPointer<QVideoSink> safeSink = sink_;
     QPointer<VideoDecoder> safeSelf = this;
+    std::shared_ptr<std::atomic<int>> inFlight = frames_in_flight_;
 
     QMetaObject::invokeMethod(
         sink_,
-        [safeSink, safeSelf, vf, utcUs]() {
+        [safeSink, safeSelf, inFlight, vf, utcUs]() {
+            inFlight->fetch_sub(1, std::memory_order_release);
             if (safeSink) safeSink->setVideoFrame(vf);
             if (safeSelf) emit safeSelf->framePresented(utcUs);
         },
@@ -165,6 +323,7 @@ void VideoDecoder::decodeLoop(QString url, bool playbackMode) {
 
     AVPacket* pkt = av_packet_alloc();
     AVFrame* frame = av_frame_alloc();
+    AVFrame* swFrame = av_frame_alloc();  // GPU→CPU transfer target
 
     AVFormatContext* nextFmt = nullptr;
     AVCodecContext* nextCodec = nullptr;
@@ -221,6 +380,7 @@ void VideoDecoder::decodeLoop(QString url, bool playbackMode) {
         }
 
         if (av_read_frame(fmt, pkt) < 0) {
+            if (!running_.load()) break;
             if (fmt->pb && avio_feof(fmt->pb)) {
                 av_seek_frame(fmt, videoStream, 0, AVSEEK_FLAG_BACKWARD);
                 avcodec_flush_buffers(codec);
@@ -255,7 +415,16 @@ void VideoDecoder::decodeLoop(QString url, bool playbackMode) {
                                                                           AVRational{1, 1000000}))
                                       : 0;
 
-            presentFrame(frame, utcUs);
+            // GPU-decoded frames live in video memory; transfer to a CPU
+            // frame (typically NV12) before presentation.
+            AVFrame* out = frame;
+            if (hw_pix_fmt_ != AV_PIX_FMT_NONE && frame->format == hw_pix_fmt_) {
+                if (av_hwframe_transfer_data(swFrame, frame, 0) >= 0) {
+                    out = swFrame;
+                }
+            }
+
+            presentFrame(out, utcUs);
 
             // کنترل نرخ فریم برای فایل‌های محلی (Pacing)
             if (isLocalFile || playbackMode) {
@@ -267,16 +436,24 @@ void VideoDecoder::decodeLoop(QString url, bool playbackMode) {
                 auto elapsedMs = duration_cast<milliseconds>(now - lastFrameTime).count();
                 int sleepMs = frameDelayMs - static_cast<int>(elapsedMs);
 
+                // Interruptible pacing: sleep in small chunks so stop() never
+                // waits behind a long uninterruptible sleep.
                 if (sleepMs > 0 && sleepMs < 500) {
-                    std::this_thread::sleep_for(milliseconds(sleepMs));
+                    while (sleepMs > 0 && running_.load()) {
+                        const int chunk = std::min(sleepMs, 20);
+                        std::this_thread::sleep_for(milliseconds(chunk));
+                        sleepMs -= chunk;
+                    }
                 }
                 lastFrameTime = steady_clock::now();
             }
 
             av_frame_unref(frame);
+            av_frame_unref(swFrame);
         }
     }
 
+    av_frame_free(&swFrame);
     av_frame_free(&frame);
     av_packet_free(&pkt);
     if (nextCodec) avcodec_free_context(&nextCodec);
