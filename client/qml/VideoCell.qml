@@ -25,6 +25,11 @@ Item {
     // Last presented frame's NTP timestamp (for the Shamsi overlay).
     property var lastFrameUtcUs: 0
 
+    // Decoder status (Farsi) + whether any frame has arrived yet, so stream
+    // failures show a message instead of a silent black cell.
+    property string statusFa: ""
+    property bool hasFrame: false
+
     onCameraUuidChanged: reattach()
     onCellIndexChanged: reattach()
     onPreferredProfileChanged:
@@ -34,16 +39,25 @@ Item {
     function reattach() {
         // Never attach with an unset index: cellIndex keys the decoder session
         // in StreamController; -1 would make every cell share one decoder.
-        if (cellIndex >= 0 && cameraUuid.length > 0)
+        if (cellIndex >= 0 && cameraUuid.length > 0) {
+            hasFrame = false
+            statusFa = ""
             streamController.attachLive(cellIndex, cameraUuid,
                                         preferredProfile, videoOutput.videoSink)
+        }
     }
 
     Connections {
         target: streamController
         function onCellFramePresented(idx, utcUs) {
-            if (idx === cell.cellIndex)
+            if (idx === cell.cellIndex) {
                 cell.lastFrameUtcUs = utcUs
+                cell.hasFrame = true
+            }
+        }
+        function onCellStatusChanged(idx, statusFa) {
+            if (idx === cell.cellIndex)
+                cell.statusFa = statusFa
         }
     }
 
@@ -51,6 +65,17 @@ Item {
         id: videoOutput
         anchors.fill: parent
         fillMode: VideoOutput.PreserveAspectFit
+    }
+
+    // Connection/decode status — visible until the first frame arrives, so a
+    // failed stream shows why instead of a silent black cell.
+    Label {
+        anchors.centerIn: parent
+        visible: !cell.hasFrame
+        text: cell.statusFa.length > 0 ? cell.statusFa : "در حال اتصال..."
+        color: "#9ca3af"
+        font.pixelSize: 13
+        font.family: "Vazirmatn"
     }
 
     // --- Shamsi timestamp overlay (bottom-right in RTL context) --------------
