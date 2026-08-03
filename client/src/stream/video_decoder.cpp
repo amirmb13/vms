@@ -14,9 +14,34 @@ extern "C" {
 
 #include <algorithm>
 #include <chrono>
+#include <map>
 
 namespace vms {
 namespace {
+
+// Process-wide hardware decode device cache. Creating one GPU device context
+// PER DECODER (av_hwdevice_ctx_create is expensive: driver handshake + GPU
+// memory per context) multiplies driver overhead by cell count — a 64-cell
+// wall allocated 64 D3D11/VAAPI devices. Enterprise engines share ONE device
+// per type across every decoder; each codec context gets its own refcounted
+// handle (av_buffer_ref) and the master ref lives for the process lifetime.
+AVBufferRef* acquireSharedHwDevice(AVHWDeviceType type) {
+    static std::mutex mutex;
+    static std::map<AVHWDeviceType, AVBufferRef*> cache;
+
+    std::lock_guard<std::mutex> lock(mutex);
+    auto it = cache.find(type);
+    if (it != cache.end()) {
+        return it->second ? av_buffer_ref(it->second) : nullptr;
+    }
+
+    AVBufferRef* device = nullptr;
+    if (av_hwdevice_ctx_create(&device, type, nullptr, nullptr, 0) < 0) {
+        device = nullptr;  // negative-cache: don't re-probe a missing GPU
+    }
+    cache[type] = device;
+    return device ? av_buffer_ref(device) : nullptr;
+}
 
 // Abort blocking FFmpeg I/O (open / read / seek) the moment running_ drops.
 // Without this an RTSP open or read can pin the worker thread for the full
@@ -129,11 +154,11 @@ bool VideoDecoder::initHardwareDecoder(AVCodecContext* codec,
                 cfg->device_type != type) {
                 continue;
             }
-            AVBufferRef* device = nullptr;
-            if (av_hwdevice_ctx_create(&device, type, nullptr, nullptr, 0) < 0)
-                continue;
-            // Ownership of the device ref transfers to the codec context;
-            // avcodec_free_context() releases it.
+            // Shared per-type GPU device: this codec context receives its
+            // own refcounted handle; avcodec_free_context() releases the
+            // handle while the master device survives for the next decoder.
+            AVBufferRef* device = acquireSharedHwDevice(type);
+            if (!device) continue;
             codec->hw_device_ctx = device;
             codec->opaque = this;
             codec->get_format = &VideoDecoder::getHwFormat;
@@ -224,15 +249,17 @@ bool VideoDecoder::openInput(const QString& url, AVFormatContext*& fmt,
 }
 
 // --- Frame presentation (thread-safe; each decoder owns its own sink) --------
-void VideoDecoder::presentFrame(AVFrame* frame, quint64 utcUs) {
+bool VideoDecoder::presentFrame(AVFrame* frame, quint64 utcUs) {
     if (!sink_ || !frame || frame->width <= 0 || frame->height <= 0 ||
-        frame->format == AV_PIX_FMT_NONE || !frame->data[0]) return;
+        frame->format == AV_PIX_FMT_NONE || !frame->data[0]) return true;
 
     // Backpressure: if the GUI thread hasn't consumed the previous frames
     // yet, drop this one. Queuing unboundedly grows latency and memory until
-    // the whole wall stalls — dropping keeps every cell realtime.
+    // the whole wall stalls — dropping keeps every cell realtime. The caller
+    // uses the `false` return to engage decoder-level frame skipping so we
+    // stop paying full decode cost for frames that are dropped anyway.
     if (frames_in_flight_->load(std::memory_order_acquire) >= kMaxFramesInFlight)
-        return;
+        return false;
 
     const int width = frame->width;
     const int height = frame->height;
@@ -252,7 +279,7 @@ void VideoDecoder::presentFrame(AVFrame* frame, quint64 utcUs) {
     if (qtFmt != QVideoFrameFormat::Format_Invalid) {
         QVideoFrameFormat fmtDesc(QSize(width, height), qtFmt);
         vf = QVideoFrame(fmtDesc);
-        if (!vf.isValid() || !vf.map(QVideoFrame::WriteOnly)) return;
+        if (!vf.isValid() || !vf.map(QVideoFrame::WriteOnly)) return true;
 
         const int planeCount = (qtFmt == QVideoFrameFormat::Format_NV12) ? 2 : 3;
         for (int p = 0; p < planeCount; ++p) {
@@ -269,12 +296,12 @@ void VideoDecoder::presentFrame(AVFrame* frame, quint64 utcUs) {
         sws_ = sws_getCachedContext(sws_, width, height, srcFmt,
                                     width, height, AV_PIX_FMT_RGBA,
                                     SWS_FAST_BILINEAR, nullptr, nullptr, nullptr);
-        if (!sws_) return;
+        if (!sws_) return true;
 
         QVideoFrameFormat fmtDesc(QSize(width, height),
                                   QVideoFrameFormat::Format_RGBA8888);
         vf = QVideoFrame(fmtDesc);
-        if (!vf.isValid() || !vf.map(QVideoFrame::WriteOnly)) return;
+        if (!vf.isValid() || !vf.map(QVideoFrame::WriteOnly)) return true;
 
         uint8_t* dst[4] = { vf.bits(0), nullptr, nullptr, nullptr };
         int dstStride[4] = { vf.bytesPerLine(0), 0, 0, 0 };
@@ -298,10 +325,70 @@ void VideoDecoder::presentFrame(AVFrame* frame, quint64 utcUs) {
             if (safeSelf) emit safeSelf->framePresented(utcUs);
         },
         Qt::QueuedConnection);
+    return true;
 }
 
 // --- Decode loop -----------------------------------------------------------------
+// Outer supervisor: live network streams auto-reconnect with exponential
+// backoff (1s → 2s → … → 10s cap). Without this, a dropped RTSP connection
+// or a camera reboot left the cell permanently black until the operator
+// manually reassigned it — enterprise VMS walls self-heal. The backoff
+// resets to the minimum whenever a session actually presented frames, so a
+// brief network blip recovers in ~1s while a dead camera is probed gently.
 void VideoDecoder::decodeLoop(QString url, bool playbackMode) {
+    using namespace std::chrono;
+
+    {
+        std::lock_guard<std::mutex> lock(url_mutex_);
+        active_url_ = url;
+    }
+
+    const bool isNetwork = url.contains(QLatin1String("://"));
+    constexpr int kReconnectMinMs = 1000;
+    constexpr int kReconnectMaxMs = 10000;
+    int backoffMs = kReconnectMinMs;
+
+    while (running_.load()) {
+        QString target;
+        {
+            std::lock_guard<std::mutex> lock(url_mutex_);
+            target = active_url_;  // profile switches survive reconnects
+        }
+
+        bool presentedAnyFrame = false;
+        const SessionResult result =
+            runSession(target, playbackMode, presentedAnyFrame);
+
+        if (result == SessionResult::Stopped ||
+            result == SessionResult::Finished) {
+            break;
+        }
+        // Only live network streams self-heal: local files can't "reconnect"
+        // and archive playback restarting from its original start time would
+        // silently rewind the review position.
+        if (!isNetwork || playbackMode) break;
+
+        if (presentedAnyFrame) backoffMs = kReconnectMinMs;
+
+        setStatusFa(QStringLiteral("قطع ارتباط — تلاش برای اتصال مجدد..."));
+
+        // Interruptible backoff: stop() never waits behind the full delay.
+        int remainMs = backoffMs;
+        while (remainMs > 0 && running_.load()) {
+            const int chunk = std::min(remainMs, 50);
+            std::this_thread::sleep_for(milliseconds(chunk));
+            remainMs -= chunk;
+        }
+        backoffMs = std::min(backoffMs * 2, kReconnectMaxMs);
+    }
+
+    running_.store(false);
+}
+
+// One connect→decode→teardown pass.
+VideoDecoder::SessionResult VideoDecoder::runSession(const QString& url,
+                                                     bool playbackMode,
+                                                     bool& presentedAnyFrame) {
     using namespace std::chrono;
 
     AVFormatContext* fmt = nullptr;
@@ -309,8 +396,8 @@ void VideoDecoder::decodeLoop(QString url, bool playbackMode) {
     int videoStream = -1;
 
     if (!openInput(url, fmt, codec, videoStream)) {
-        running_.store(false);
-        return;
+        return running_.load() ? SessionResult::OpenFailed
+                               : SessionResult::Stopped;
     }
     setStatusFa(QStringLiteral("در حال پخش"));
 
@@ -332,6 +419,19 @@ void VideoDecoder::decodeLoop(QString url, bool playbackMode) {
     bool waiting_for_keyframe = true;
     auto lastFrameTime = steady_clock::now();
 
+    SessionResult result = SessionResult::Stopped;
+    int consecutiveReadErrors = 0;
+    constexpr int kMaxConsecutiveReadErrors = 5;
+
+    // Adaptive decode-load shedding: when the GUI can't keep up (backpressure
+    // drops), the decoder switches to AVDISCARD_NONREF so non-reference
+    // frames are never decoded at all instead of being fully decoded and then
+    // thrown away — the enterprise policy that keeps a saturated wall from
+    // burning CPU/GPU on invisible frames. Restored the moment frames flow.
+    int dropStreak = 0;
+    bool skippingNonRef = false;
+    constexpr int kDropStreakForSkip = 3;
+
     while (running_.load()) {
         // --- Seamless profile switch ----
         if (switch_pending_.load() && !nextFmt) {
@@ -351,6 +451,15 @@ void VideoDecoder::decodeLoop(QString url, bool playbackMode) {
                         avcodec_send_packet(codec, p2);
                         switch_pending_.store(false);
                         waiting_for_keyframe = false;
+                        // New codec context: reset load-shedding state and
+                        // record the new URL so a later auto-reconnect
+                        // re-opens THIS profile, not the original one.
+                        dropStreak = 0;
+                        skippingNonRef = false;
+                        {
+                            std::lock_guard<std::mutex> l(url_mutex_);
+                            active_url_ = target;
+                        }
                         emit keyframeAligned();
                         break;
                     }
@@ -379,17 +488,39 @@ void VideoDecoder::decodeLoop(QString url, bool playbackMode) {
             }
         }
 
-        if (av_read_frame(fmt, pkt) < 0) {
+        const int readErr = av_read_frame(fmt, pkt);
+        if (readErr < 0) {
             if (!running_.load()) break;
             if (fmt->pb && avio_feof(fmt->pb)) {
-                av_seek_frame(fmt, videoStream, 0, AVSEEK_FLAG_BACKWARD);
-                avcodec_flush_buffers(codec);
-                waiting_for_keyframe = true;
+                if (isLocalFile) {
+                    // Loop local files for demo/kiosk playback.
+                    av_seek_frame(fmt, videoStream, 0, AVSEEK_FLAG_BACKWARD);
+                    avcodec_flush_buffers(codec);
+                    waiting_for_keyframe = true;
+                    continue;
+                }
+                // Network EOF = peer closed the connection. The old code
+                // retried av_read_frame on the dead context in a 100ms loop
+                // forever — the cell froze on its last frame permanently.
+                result = SessionResult::StreamError;
+                break;
+            }
+            if (readErr == AVERROR(EAGAIN)) {
+                std::this_thread::sleep_for(milliseconds(10));
                 continue;
+            }
+            // Persistent read failures on a network stream mean the
+            // connection is gone — hand control to the reconnect supervisor
+            // instead of spinning here.
+            if (!isLocalFile &&
+                ++consecutiveReadErrors >= kMaxConsecutiveReadErrors) {
+                result = SessionResult::StreamError;
+                break;
             }
             std::this_thread::sleep_for(milliseconds(100));
             continue;
         }
+        consecutiveReadErrors = 0;
 
         if (pkt->stream_index != videoStream) {
             av_packet_unref(pkt);
@@ -424,7 +555,21 @@ void VideoDecoder::decodeLoop(QString url, bool playbackMode) {
                 }
             }
 
-            presentFrame(out, utcUs);
+            const bool presented = presentFrame(out, utcUs);
+            if (presented) {
+                presentedAnyFrame = true;
+                dropStreak = 0;
+                if (skippingNonRef) {
+                    codec->skip_frame = AVDISCARD_DEFAULT;
+                    skippingNonRef = false;
+                }
+            } else if (!playbackMode && !skippingNonRef &&
+                       ++dropStreak >= kDropStreakForSkip) {
+                // GUI is saturated: stop decoding non-reference frames
+                // entirely instead of decoding and discarding them.
+                codec->skip_frame = AVDISCARD_NONREF;
+                skippingNonRef = true;
+            }
 
             // کنترل نرخ فریم برای فایل‌های محلی (Pacing)
             if (isLocalFile || playbackMode) {
@@ -460,6 +605,9 @@ void VideoDecoder::decodeLoop(QString url, bool playbackMode) {
     if (nextFmt) avformat_close_input(&nextFmt);
     avcodec_free_context(&codec);
     avformat_close_input(&fmt);
+
+    if (!running_.load()) return SessionResult::Stopped;
+    return result;
 }
 
 void VideoDecoder::setStatusFa(const QString& s) {

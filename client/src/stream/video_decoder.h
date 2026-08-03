@@ -52,13 +52,27 @@ signals:
     void statusFaChanged();
 
 private:
+    // Outcome of one connect-decode session; drives the reconnect policy.
+    enum class SessionResult {
+        Stopped,      // running_ dropped — clean shutdown, never reconnect
+        OpenFailed,   // connect/handshake failed — reconnect (network live)
+        StreamError,  // died mid-stream — reconnect (network live)
+        Finished,     // local file / non-recoverable — no reconnect
+    };
+
     bool openInput(const QString& url, AVFormatContext*& fmt,
                    AVCodecContext*& codec, int& videoStream);
     bool initHardwareDecoder(AVCodecContext* codec, const AVCodec* dec);
     static AVPixelFormat getHwFormat(AVCodecContext* ctx,
                                      const AVPixelFormat* formats);
-    void presentFrame(AVFrame* frame, quint64 utcUs);
+    // Returns true if the frame was queued to the GUI, false if it was
+    // dropped by backpressure (feeds the adaptive decode-skip policy).
+    bool presentFrame(AVFrame* frame, quint64 utcUs);
     void decodeLoop(QString url, bool playbackMode);
+    // One full open→decode→teardown pass. decodeLoop wraps it with the
+    // exponential-backoff reconnect loop for live network streams.
+    SessionResult runSession(const QString& url, bool playbackMode,
+                             bool& presentedAnyFrame);
     void setStatusFa(const QString& s);
 
     QVideoSink* sink_{nullptr};
@@ -71,6 +85,10 @@ private:
 
     std::mutex url_mutex_;
     QString pending_url_;
+    // URL of the stream currently being decoded. Updated when a seamless
+    // profile switch lands, so an auto-reconnect after a network drop
+    // re-opens the CURRENT profile instead of the one startLive() began with.
+    QString active_url_;
     QString status_fa_;
 
     SwsContext* sws_{nullptr};
