@@ -1,0 +1,12 @@
+--resource
+H:/programming/VMS/video-management-system/client/build/drive_h_Qt_6_11_1_MSVC2022_64bit_Debug/.qt/rcc/qmake_Vms_Client.qrc
+--resource
+H:/programming/VMS/video-management-system/client/build/drive_h_Qt_6_11_1_MSVC2022_64bit_Debug/.qt/rcc/vms_client_raw_qml_0.qrc
+--resource
+H:/programming/VMS/video-management-system/client/build/drive_h_Qt_6_11_1_MSVC2022_64bit_Debug/.qt/rcc/vms_client_raw_res_0.qrc
+/qt/qml/Vms/Client/qml/Main.qml
+/qt/qml/Vms/Client/qml/GridEngine.qml
+/qt/qml/Vms/Client/qml/VideoCell.qml
+/qt/qml/Vms/Client/qml/TimelineBar.qml
+/qt/qml/Vms/Client/qml/CameraTree.qml
+/qt/qml/Vms/Client/qml/SmartMap.qml

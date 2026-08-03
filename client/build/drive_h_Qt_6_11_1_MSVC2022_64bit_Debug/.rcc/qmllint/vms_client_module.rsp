@@ -1,0 +1,16 @@
+-I
+H:/programming/VMS/video-management-system/client/build/drive_h_Qt_6_11_1_MSVC2022_64bit_Debug
+-I
+H:/programming/VMS/video-management-system/client/build/drive_h_Qt_6_11_1_MSVC2022_64bit_Debug/Vms/Client
+-I
+H:/programming/VMS/video-management-system/client/build/drive_h_Qt_6_11_1_MSVC2022_64bit_Debug
+-I
+H:/Qt/6.11.1/msvc2022_64/qml
+--resource
+H:/programming/VMS/video-management-system/client/build/drive_h_Qt_6_11_1_MSVC2022_64bit_Debug/.qt/rcc/qmake_Vms_Client.qrc
+--resource
+H:/programming/VMS/video-management-system/client/build/drive_h_Qt_6_11_1_MSVC2022_64bit_Debug/.qt/rcc/vms_client_raw_qml_0.qrc
+--resource
+H:/programming/VMS/video-management-system/client/build/drive_h_Qt_6_11_1_MSVC2022_64bit_Debug/.qt/rcc/vms_client_raw_res_0.qrc
+--module
+Vms.Client

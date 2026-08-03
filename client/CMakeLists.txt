@@ -10,13 +10,28 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
+# -----------------------------------------------------------------------------
+# 1. Qt6 Configuration & Setup
+# -----------------------------------------------------------------------------
 find_package(Qt6 6.6 REQUIRED COMPONENTS Quick QuickControls2 Multimedia Network)
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET
-    libavformat libavcodec libavutil libswscale)
-
 qt_standard_project_setup(REQUIRES 6.6)
 
+# -----------------------------------------------------------------------------
+# 2. FFmpeg Direct Configuration (Scoop Shared Build)
+# -----------------------------------------------------------------------------
+set(FFMPEG_DIR "C:/Users/Sahra/scoop/apps/ffmpeg-shared/current")
+
+# معرفی فایل‌های lib برای کامپایلر
+set(FFMPEG_LIBRARIES
+    "${FFMPEG_DIR}/lib/avcodec.lib"
+    "${FFMPEG_DIR}/lib/avformat.lib"
+    "${FFMPEG_DIR}/lib/avutil.lib"
+    "${FFMPEG_DIR}/lib/swscale.lib"
+)
+
+# -----------------------------------------------------------------------------
+# 3. Executable & Source Files
+# -----------------------------------------------------------------------------
 qt_add_executable(vms_client
     src/main.cpp
     src/grid/grid_model.cpp          # QAbstractListModel grid engine
@@ -28,6 +43,9 @@ qt_add_executable(vms_client
     src/i18n/shamsi_formatter.cpp    # Shamsi + Persian digits QML helper
 )
 
+# -----------------------------------------------------------------------------
+# 4. QML Module & Resources
+# -----------------------------------------------------------------------------
 qt_add_qml_module(vms_client
     URI Vms.Client
     VERSION 1.0
@@ -43,13 +61,25 @@ qt_add_qml_module(vms_client
         resources/fonts/Vazirmatn-Bold.ttf
 )
 
-target_include_directories(vms_client PRIVATE src)
-target_link_libraries(vms_client PRIVATE
-    Qt6::Quick Qt6::QuickControls2 Qt6::Multimedia Qt6::Network
-    PkgConfig::FFMPEG)
+# -----------------------------------------------------------------------------
+# 5. Include Directories & Link Libraries
+# -----------------------------------------------------------------------------
+target_include_directories(vms_client PRIVATE
+    src
+    "${FFMPEG_DIR}/include"
+)
 
-# Force the RHI backend: DirectX 12 on Windows, Vulkan elsewhere
-# (also set at runtime via QSG_RHI_BACKEND / QQuickWindow::setGraphicsApi)
+target_link_libraries(vms_client PRIVATE
+    Qt6::Quick
+    Qt6::QuickControls2
+    Qt6::Multimedia
+    Qt6::Network
+    ${FFMPEG_LIBRARIES}
+)
+
+# -----------------------------------------------------------------------------
+# 6. RHI Backend Definitions
+# -----------------------------------------------------------------------------
 if (WIN32)
     target_compile_definitions(vms_client PRIVATE VMS_RHI_D3D12=1)
 else()

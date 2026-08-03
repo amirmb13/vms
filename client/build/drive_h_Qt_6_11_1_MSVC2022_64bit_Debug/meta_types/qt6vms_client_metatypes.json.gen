@@ -1,0 +1,1247 @@
+[
+    {
+        "classes": [
+            {
+                "className": "PipWorker",
+                "lineNumber": 25,
+                "methods": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "cameraUuid",
+                                "type": "QString"
+                            },
+                            {
+                                "name": "startUtcUs",
+                                "type": "quint64"
+                            },
+                            {
+                                "name": "sink",
+                                "type": "QVideoSink*"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 38,
+                        "name": "open",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "utcUs",
+                                "type": "quint64"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 40,
+                        "name": "seek",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "paused",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 41,
+                        "name": "setPaused",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "rate",
+                                "type": "double"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 42,
+                        "name": "setRate",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 6,
+                        "lineNumber": 43,
+                        "name": "close",
+                        "returnType": "void"
+                    }
+                ],
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 27,
+                        "name": "active",
+                        "notify": "activeChanged",
+                        "override": false,
+                        "read": "active",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 28,
+                        "name": "positionUtcUs",
+                        "notify": "positionChanged",
+                        "override": false,
+                        "read": "positionUtcUs",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "quint64",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "vms::PipWorker",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 49,
+                        "name": "activeChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 50,
+                        "name": "positionChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "pip_worker.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "SyncPlayback",
+                "lineNumber": 20,
+                "methods": [
+                    {
+                        "access": "public",
+                        "index": 5,
+                        "lineNumber": 37,
+                        "name": "play",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 6,
+                        "lineNumber": 38,
+                        "name": "pause",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "utcUs",
+                                "type": "quint64"
+                            }
+                        ],
+                        "index": 7,
+                        "lineNumber": 39,
+                        "name": "seek",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "frames",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 8,
+                        "lineNumber": 40,
+                        "name": "stepFrames",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 9,
+                        "lineNumber": 41,
+                        "name": "jumpToLive",
+                        "returnType": "void"
+                    }
+                ],
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 22,
+                        "name": "playing",
+                        "notify": "playingChanged",
+                        "override": false,
+                        "read": "playing",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 23,
+                        "name": "rate",
+                        "notify": "rateChanged",
+                        "override": false,
+                        "read": "rate",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "double",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setRate"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 24,
+                        "name": "positionUtcUs",
+                        "notify": "positionChanged",
+                        "override": false,
+                        "read": "positionUtcUs",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "quint64",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 26,
+                        "name": "windowStartUtcUs",
+                        "notify": "windowChanged",
+                        "override": false,
+                        "read": "windowStartUtcUs",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "quint64",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setWindowStartUtcUs"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "lineNumber": 28,
+                        "name": "windowEndUtcUs",
+                        "notify": "windowChanged",
+                        "override": false,
+                        "read": "windowEndUtcUs",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "quint64",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setWindowEndUtcUs"
+                    }
+                ],
+                "qualifiedClassName": "vms::SyncPlayback",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 54,
+                        "name": "playingChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 55,
+                        "name": "rateChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 2,
+                        "lineNumber": 56,
+                        "name": "positionChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 3,
+                        "lineNumber": 57,
+                        "name": "windowChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 4,
+                        "lineNumber": 58,
+                        "name": "liveRequested",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "sync_playback.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "StreamController",
+                "lineNumber": 15,
+                "methods": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "cellIndex",
+                                "type": "int"
+                            },
+                            {
+                                "name": "cameraUuid",
+                                "type": "QString"
+                            },
+                            {
+                                "name": "profile",
+                                "type": "QString"
+                            },
+                            {
+                                "name": "sink",
+                                "type": "QVideoSink*"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 23,
+                        "name": "attachLive",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "cellIndex",
+                                "type": "int"
+                            },
+                            {
+                                "name": "profile",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 26,
+                        "name": "switchProfile",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "cellIndex",
+                                "type": "int"
+                            },
+                            {
+                                "name": "cameraUuid",
+                                "type": "QString"
+                            },
+                            {
+                                "name": "sink",
+                                "type": "QVideoSink*"
+                            },
+                            {
+                                "name": "startUtcUs",
+                                "type": "quint64"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 28,
+                        "name": "attachPlayback",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "cellIndex",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 31,
+                        "name": "detach",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 7,
+                        "lineNumber": 32,
+                        "name": "detachAll",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "cellWidth",
+                                "type": "qreal"
+                            },
+                            {
+                                "name": "gridWidth",
+                                "type": "qreal"
+                            }
+                        ],
+                        "index": 8,
+                        "isConst": true,
+                        "lineNumber": 38,
+                        "name": "profileForCellSize",
+                        "returnType": "QString"
+                    }
+                ],
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 17,
+                        "name": "relayHost",
+                        "notify": "relayHostChanged",
+                        "override": false,
+                        "read": "relayHost",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setRelayHost"
+                    }
+                ],
+                "qualifiedClassName": "vms::StreamController",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 44,
+                        "name": "relayHostChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "cellIndex",
+                                "type": "int"
+                            },
+                            {
+                                "name": "utcUs",
+                                "type": "quint64"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 45,
+                        "name": "cellFramePresented",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "cellIndex",
+                                "type": "int"
+                            },
+                            {
+                                "name": "statusFa",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 46,
+                        "name": "cellStatusChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "stream_controller.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "VideoDecoder",
+                "lineNumber": 22,
+                "methods": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "url",
+                                "type": "QString"
+                            },
+                            {
+                                "name": "sink",
+                                "type": "QVideoSink*"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 30,
+                        "name": "startLive",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "url",
+                                "type": "QString"
+                            },
+                            {
+                                "name": "sink",
+                                "type": "QVideoSink*"
+                            },
+                            {
+                                "name": "startUtcUs",
+                                "type": "quint64"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 31,
+                        "name": "startPlayback",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "url",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 32,
+                        "name": "switchTo",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "utcUs",
+                                "type": "quint64"
+                            }
+                        ],
+                        "index": 7,
+                        "lineNumber": 33,
+                        "name": "seekTo",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "paused",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 8,
+                        "lineNumber": 34,
+                        "name": "setPaused",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "rate",
+                                "type": "double"
+                            }
+                        ],
+                        "index": 9,
+                        "lineNumber": 35,
+                        "name": "setRate",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 10,
+                        "lineNumber": 36,
+                        "name": "stop",
+                        "returnType": "void"
+                    }
+                ],
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 24,
+                        "name": "statusFa",
+                        "notify": "statusFaChanged",
+                        "override": false,
+                        "read": "statusFa",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "vms::VideoDecoder",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 41,
+                        "name": "decodingChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "utcUs",
+                                "type": "quint64"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 42,
+                        "name": "framePresented",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 2,
+                        "lineNumber": 43,
+                        "name": "keyframeAligned",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 3,
+                        "lineNumber": 44,
+                        "name": "statusFaChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "video_decoder.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "GridModel",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 44,
+                        "name": "Roles",
+                        "values": [
+                            "LayoutIdRole",
+                            "NameFaRole",
+                            "IsSharedRole",
+                            "CellCountRole"
+                        ]
+                    }
+                ],
+                "lineNumber": 34,
+                "methods": [
+                    {
+                        "access": "public",
+                        "index": 5,
+                        "lineNumber": 60,
+                        "name": "reload",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "row",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 61,
+                        "name": "applyLayoutAt",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "cols",
+                                "type": "int"
+                            },
+                            {
+                                "name": "rows",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 7,
+                        "lineNumber": 62,
+                        "name": "applyPresetGrid",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "cellIndex",
+                                "type": "int"
+                            },
+                            {
+                                "name": "cameraUuid",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 8,
+                        "lineNumber": 63,
+                        "name": "assignCamera",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "cellIndex",
+                                "type": "int"
+                            },
+                            {
+                                "name": "spanW",
+                                "type": "int"
+                            },
+                            {
+                                "name": "spanH",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 9,
+                        "lineNumber": 64,
+                        "name": "mergeCells",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "nameFa",
+                                "type": "QString"
+                            },
+                            {
+                                "name": "shared",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 10,
+                        "lineNumber": 65,
+                        "name": "saveActiveLayout",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "jwtAccessToken",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 11,
+                        "lineNumber": 66,
+                        "name": "setAuthToken",
+                        "returnType": "void"
+                    }
+                ],
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 36,
+                        "name": "apiBaseUrl",
+                        "notify": "apiBaseUrlChanged",
+                        "override": false,
+                        "read": "apiBaseUrl",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setApiBaseUrl"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 38,
+                        "name": "activeLayout",
+                        "notify": "activeLayoutChanged",
+                        "override": false,
+                        "read": "activeLayout",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QVariantMap",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 40,
+                        "name": "loading",
+                        "notify": "loadingChanged",
+                        "override": false,
+                        "read": "loading",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 41,
+                        "name": "errorFa",
+                        "notify": "errorFaChanged",
+                        "override": false,
+                        "read": "errorFa",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "vms::GridModel",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 75,
+                        "name": "apiBaseUrlChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 76,
+                        "name": "activeLayoutChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 2,
+                        "lineNumber": 77,
+                        "name": "loadingChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 3,
+                        "lineNumber": 78,
+                        "name": "errorFaChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "cellIndex",
+                                "type": "int"
+                            },
+                            {
+                                "name": "cameraUuid",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 80,
+                        "name": "cellCameraChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QAbstractListModel"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "grid_model.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "CameraTreeModel",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 52,
+                        "name": "Roles",
+                        "values": [
+                            "NameFaRole",
+                            "IsCameraRole",
+                            "CameraUuidRole",
+                            "CameraCountRole",
+                            "RecordingEnabledRole",
+                            "GroupIdRole"
+                        ]
+                    }
+                ],
+                "lineNumber": 44,
+                "methods": [
+                    {
+                        "access": "public",
+                        "index": 3,
+                        "lineNumber": 75,
+                        "name": "reload",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "jwtAccessToken",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 76,
+                        "name": "setAuthToken",
+                        "returnType": "void"
+                    }
+                ],
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 46,
+                        "name": "apiBaseUrl",
+                        "notify": "apiBaseUrlChanged",
+                        "override": false,
+                        "read": "apiBaseUrl",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setApiBaseUrl"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 48,
+                        "name": "loading",
+                        "notify": "loadingChanged",
+                        "override": false,
+                        "read": "loading",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 49,
+                        "name": "errorFa",
+                        "notify": "errorFaChanged",
+                        "override": false,
+                        "read": "errorFa",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "vms::CameraTreeModel",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 84,
+                        "name": "apiBaseUrlChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 85,
+                        "name": "loadingChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 2,
+                        "lineNumber": 86,
+                        "name": "errorFaChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QAbstractItemModel"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "camera_tree_model.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "ShamsiFormatter",
+                "lineNumber": 20,
+                "methods": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "isConst": true,
+                        "lineNumber": 27,
+                        "name": "nowShamsi",
+                        "returnType": "QString"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "utcMicroseconds",
+                                "type": "qulonglong"
+                            }
+                        ],
+                        "index": 1,
+                        "isConst": true,
+                        "lineNumber": 30,
+                        "name": "toShamsi",
+                        "returnType": "QString"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "utcMicroseconds",
+                                "type": "qulonglong"
+                            }
+                        ],
+                        "index": 2,
+                        "isConst": true,
+                        "lineNumber": 33,
+                        "name": "toShamsiShort",
+                        "returnType": "QString"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "utcMicroseconds",
+                                "type": "qulonglong"
+                            }
+                        ],
+                        "index": 3,
+                        "isConst": true,
+                        "lineNumber": 36,
+                        "name": "toShamsiDate",
+                        "returnType": "QString"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "text",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 4,
+                        "isConst": true,
+                        "lineNumber": 39,
+                        "name": "toPersianDigits",
+                        "returnType": "QString"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "jy",
+                                "type": "int"
+                            },
+                            {
+                                "name": "jm",
+                                "type": "int"
+                            },
+                            {
+                                "name": "jd",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 5,
+                        "isConst": true,
+                        "lineNumber": 43,
+                        "name": "shamsiDateToUtcUs",
+                        "returnType": "qulonglong"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "utcMicroseconds",
+                                "type": "qulonglong"
+                            }
+                        ],
+                        "index": 6,
+                        "isConst": true,
+                        "lineNumber": 46,
+                        "name": "shamsiYear",
+                        "returnType": "int"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "utcMicroseconds",
+                                "type": "qulonglong"
+                            }
+                        ],
+                        "index": 7,
+                        "isConst": true,
+                        "lineNumber": 47,
+                        "name": "shamsiMonth",
+                        "returnType": "int"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "utcMicroseconds",
+                                "type": "qulonglong"
+                            }
+                        ],
+                        "index": 8,
+                        "isConst": true,
+                        "lineNumber": 48,
+                        "name": "shamsiDay",
+                        "returnType": "int"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "jm",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 9,
+                        "isConst": true,
+                        "lineNumber": 49,
+                        "name": "shamsiMonthName",
+                        "returnType": "QString"
+                    }
+                ],
+                "object": true,
+                "qualifiedClassName": "vms::ShamsiFormatter",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "shamsi_formatter.h",
+        "outputRevision": 69
+    }
+]

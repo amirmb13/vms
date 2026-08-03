@@ -1,0 +1,7 @@
+<RCC>
+  <qresource prefix="/qt/qml/Vms/Client/">
+    <file alias="resources/fonts/Vazirmatn-Regular.ttf">H:/programming/VMS/video-management-system/client/resources/fonts/Vazirmatn-Regular.ttf</file>
+    <file alias="resources/fonts/Vazirmatn-Bold.ttf">H:/programming/VMS/video-management-system/client/resources/fonts/Vazirmatn-Bold.ttf</file>
+  </qresource>
+</RCC>
+

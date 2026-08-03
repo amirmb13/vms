@@ -1,0 +1,11 @@
+module Vms.Client
+typeinfo vms_client.qmltypes
+prefer :/qt/qml/Vms/Client/
+Main 1.0 qml/Main.qml
+GridEngine 1.0 qml/GridEngine.qml
+VideoCell 1.0 qml/VideoCell.qml
+TimelineBar 1.0 qml/TimelineBar.qml
+CameraTree 1.0 qml/CameraTree.qml
+SmartMap 1.0 qml/SmartMap.qml
+depends QtQuick
+

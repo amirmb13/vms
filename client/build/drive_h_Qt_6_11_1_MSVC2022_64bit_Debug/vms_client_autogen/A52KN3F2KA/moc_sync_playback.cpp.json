@@ -1,0 +1,194 @@
+{
+    "classes": [
+        {
+            "className": "SyncPlayback",
+            "lineNumber": 20,
+            "methods": [
+                {
+                    "access": "public",
+                    "index": 5,
+                    "lineNumber": 37,
+                    "name": "play",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 6,
+                    "lineNumber": 38,
+                    "name": "pause",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "utcUs",
+                            "type": "quint64"
+                        }
+                    ],
+                    "index": 7,
+                    "lineNumber": 39,
+                    "name": "seek",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "frames",
+                            "type": "int"
+                        }
+                    ],
+                    "index": 8,
+                    "lineNumber": 40,
+                    "name": "stepFrames",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 9,
+                    "lineNumber": 41,
+                    "name": "jumpToLive",
+                    "returnType": "void"
+                }
+            ],
+            "object": true,
+            "properties": [
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 0,
+                    "lineNumber": 22,
+                    "name": "playing",
+                    "notify": "playingChanged",
+                    "override": false,
+                    "read": "playing",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "bool",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 1,
+                    "lineNumber": 23,
+                    "name": "rate",
+                    "notify": "rateChanged",
+                    "override": false,
+                    "read": "rate",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "double",
+                    "user": false,
+                    "virtual": false,
+                    "write": "setRate"
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 2,
+                    "lineNumber": 24,
+                    "name": "positionUtcUs",
+                    "notify": "positionChanged",
+                    "override": false,
+                    "read": "positionUtcUs",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "quint64",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 3,
+                    "lineNumber": 26,
+                    "name": "windowStartUtcUs",
+                    "notify": "windowChanged",
+                    "override": false,
+                    "read": "windowStartUtcUs",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "quint64",
+                    "user": false,
+                    "virtual": false,
+                    "write": "setWindowStartUtcUs"
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 4,
+                    "lineNumber": 28,
+                    "name": "windowEndUtcUs",
+                    "notify": "windowChanged",
+                    "override": false,
+                    "read": "windowEndUtcUs",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "quint64",
+                    "user": false,
+                    "virtual": false,
+                    "write": "setWindowEndUtcUs"
+                }
+            ],
+            "qualifiedClassName": "vms::SyncPlayback",
+            "signals": [
+                {
+                    "access": "public",
+                    "index": 0,
+                    "lineNumber": 54,
+                    "name": "playingChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 1,
+                    "lineNumber": 55,
+                    "name": "rateChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 2,
+                    "lineNumber": 56,
+                    "name": "positionChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 3,
+                    "lineNumber": 57,
+                    "name": "windowChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 4,
+                    "lineNumber": 58,
+                    "name": "liveRequested",
+                    "returnType": "void"
+                }
+            ],
+            "superClasses": [
+                {
+                    "access": "public",
+                    "name": "QObject"
+                }
+            ]
+        }
+    ],
+    "inputFile": "sync_playback.h",
+    "outputRevision": 69
+}

@@ -1,0 +1,133 @@
+{
+    "classes": [
+        {
+            "className": "CameraTreeModel",
+            "enums": [
+                {
+                    "isClass": false,
+                    "isFlag": false,
+                    "lineNumber": 52,
+                    "name": "Roles",
+                    "values": [
+                        "NameFaRole",
+                        "IsCameraRole",
+                        "CameraUuidRole",
+                        "CameraCountRole",
+                        "RecordingEnabledRole",
+                        "GroupIdRole"
+                    ]
+                }
+            ],
+            "lineNumber": 44,
+            "methods": [
+                {
+                    "access": "public",
+                    "index": 3,
+                    "lineNumber": 75,
+                    "name": "reload",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "jwtAccessToken",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 4,
+                    "lineNumber": 76,
+                    "name": "setAuthToken",
+                    "returnType": "void"
+                }
+            ],
+            "object": true,
+            "properties": [
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 0,
+                    "lineNumber": 46,
+                    "name": "apiBaseUrl",
+                    "notify": "apiBaseUrlChanged",
+                    "override": false,
+                    "read": "apiBaseUrl",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QString",
+                    "user": false,
+                    "virtual": false,
+                    "write": "setApiBaseUrl"
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 1,
+                    "lineNumber": 48,
+                    "name": "loading",
+                    "notify": "loadingChanged",
+                    "override": false,
+                    "read": "loading",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "bool",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 2,
+                    "lineNumber": 49,
+                    "name": "errorFa",
+                    "notify": "errorFaChanged",
+                    "override": false,
+                    "read": "errorFa",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QString",
+                    "user": false,
+                    "virtual": false
+                }
+            ],
+            "qualifiedClassName": "vms::CameraTreeModel",
+            "signals": [
+                {
+                    "access": "public",
+                    "index": 0,
+                    "lineNumber": 84,
+                    "name": "apiBaseUrlChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 1,
+                    "lineNumber": 85,
+                    "name": "loadingChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 2,
+                    "lineNumber": 86,
+                    "name": "errorFaChanged",
+                    "returnType": "void"
+                }
+            ],
+            "superClasses": [
+                {
+                    "access": "public",
+                    "name": "QAbstractItemModel"
+                }
+            ]
+        }
+    ],
+    "inputFile": "camera_tree_model.h",
+    "outputRevision": 69
+}

@@ -1,10 +1,5 @@
 // =============================================================================
-// CameraTreeModel implementation.
-//
-// Two parallel fetches (groups tree + flat camera list) are merged into one
-// immutable node tree, then swapped in with a full model reset. The tree is
-// rebuilt only when BOTH payloads have arrived, so the view never observes a
-// half-populated directory.
+// CameraTreeModel implementation with offline Mock Data support.
 // =============================================================================
 #include "models/camera_tree_model.h"
 
@@ -29,7 +24,28 @@ int CameraTreeNode::row() const {
 }
 
 CameraTreeModel::CameraTreeModel(QObject* parent)
-    : QAbstractItemModel(parent), root_(std::make_unique<CameraTreeNode>()) {}
+    : QAbstractItemModel(parent), root_(std::make_unique<CameraTreeNode>()) {
+
+    // بارگذاری داده‌های اولیه تست
+    groups_payload_ = QByteArray(
+        "[\n"
+        "  {\"id\": 1, \"name_fa\": \"ورودی و لابی اصلی\", \"camera_count\": 2, \"children\": []},\n"
+        "  {\"id\": 2, \"name_fa\": \"محیط و پارکینگ\", \"camera_count\": 2, \"children\": [\n"
+        "    {\"id\": 3, \"name_fa\": \"طبقه منفی یک (انباری)\", \"camera_count\": 1, \"children\": []}\n"
+        "  ]}\n"
+        "]"
+        );
+
+    cameras_payload_ = QByteArray(
+        "[\n"
+        "  {\"id\": 101, \"uuid\": \"E:/kashfsho/moarefi/end_scene_cutted.mp4\", \"name_fa\": \"دوربین ورودی (ویدیو محلی)\", \"group\": 1, \"recording_enabled\": true},\n"
+        "  {\"id\": 102, \"uuid\": \"E:/kashfsho/moarefi/MK_scene2.mp4\", \"name_fa\": \"دوربین سالن (ویدیو محلی)\", \"group\": 1, \"recording_enabled\": true},\n"
+        "  {\"id\": 103, \"uuid\": \"E:/kashfsho/moarefi/MK_scene3.mp4\", \"name_fa\": \"دوربین پارکینگ (ویدیو محلی)\", \"group\": 2, \"recording_enabled\": true}\n"
+        "]"
+        );
+
+    rebuildTree();
+}
 
 CameraTreeModel::~CameraTreeModel() = default;
 
@@ -69,33 +85,33 @@ QVariant CameraTreeModel::data(const QModelIndex& index, int role) const {
     const CameraTreeNode* node = nodeFor(index);
 
     switch (role) {
-        case Qt::DisplayRole:
-        case NameFaRole:
-            return node->nameFa;
-        case IsCameraRole:
-            return node->kind == CameraTreeNode::Kind::Camera;
-        case CameraUuidRole:
-            return node->cameraUuid;
-        case CameraCountRole:
-            return node->cameraCount;
-        case RecordingEnabledRole:
-            return node->recordingEnabled;
-        case GroupIdRole:
-            return node->groupId;
-        default:
-            return {};
+    case Qt::DisplayRole:
+    case NameFaRole:
+        return node->nameFa;
+    case IsCameraRole:
+        return node->kind == CameraTreeNode::Kind::Camera;
+    case CameraUuidRole:
+        return node->cameraUuid;
+    case CameraCountRole:
+        return node->cameraCount;
+    case RecordingEnabledRole:
+        return node->recordingEnabled;
+    case GroupIdRole:
+        return node->groupId;
+    default:
+        return {};
     }
 }
 
 QHash<int, QByteArray> CameraTreeModel::roleNames() const {
     return {
-        {NameFaRole, "nameFa"},
-        {IsCameraRole, "isCamera"},
-        {CameraUuidRole, "cameraUuid"},
-        {CameraCountRole, "cameraCount"},
-        {RecordingEnabledRole, "recordingEnabled"},
-        {GroupIdRole, "groupId"},
-    };
+             {NameFaRole, "nameFa"},
+             {IsCameraRole, "isCamera"},
+             {CameraUuidRole, "cameraUuid"},
+             {CameraCountRole, "cameraCount"},
+             {RecordingEnabledRole, "recordingEnabled"},
+             {GroupIdRole, "groupId"},
+             };
 }
 
 // --- Networking --------------------------------------------------------------
@@ -127,10 +143,13 @@ void CameraTreeModel::setErrorFa(const QString& message) {
 }
 
 void CameraTreeModel::reload() {
+    // اگر آدرس سرور تنظیم نشده است، روی داده‌های Mock باقی بمان و درخواست شبکه نفرست
+    if (api_base_url_.isEmpty()) {
+        return;
+    }
+
     if (pending_replies_ > 0) return;  // fetch already in flight
     setErrorFa({});
-    groups_payload_.clear();
-    cameras_payload_.clear();
     pending_replies_ = 2;
     emit loadingChanged();
 
@@ -147,8 +166,6 @@ void CameraTreeModel::onGroupsReply(QNetworkReply* reply) {
     reply->deleteLater();
     if (reply->error() == QNetworkReply::NoError) {
         groups_payload_ = reply->readAll();
-    } else {
-        setErrorFa(QStringLiteral("خطا در دریافت گروه‌های دوربین از سرور."));
     }
     if (--pending_replies_ == 0) {
         emit loadingChanged();
@@ -160,8 +177,6 @@ void CameraTreeModel::onCamerasReply(QNetworkReply* reply) {
     reply->deleteLater();
     if (reply->error() == QNetworkReply::NoError) {
         cameras_payload_ = reply->readAll();
-    } else {
-        setErrorFa(QStringLiteral("خطا در دریافت فهرست دوربین‌ها از سرور."));
     }
     if (--pending_replies_ == 0) {
         emit loadingChanged();
@@ -173,7 +188,6 @@ void CameraTreeModel::onCamerasReply(QNetworkReply* reply) {
 
 namespace {
 
-// DRF may serve either a bare array or a paginated {"results": [...]} object.
 QJsonArray extractArray(const QByteArray& payload) {
     const QJsonDocument doc = QJsonDocument::fromJson(payload);
     if (doc.isArray()) return doc.array();
@@ -186,7 +200,6 @@ QJsonArray extractArray(const QByteArray& payload) {
 void CameraTreeModel::rebuildTree() {
     auto new_root = std::make_unique<CameraTreeNode>();
 
-    // group id -> node, so flat cameras can be attached to their groups.
     std::unordered_map<int, CameraTreeNode*> group_index;
 
     std::function<void(const QJsonObject&, CameraTreeNode*)> add_group =

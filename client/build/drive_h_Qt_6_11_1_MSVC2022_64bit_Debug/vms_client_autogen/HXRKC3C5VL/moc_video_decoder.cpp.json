@@ -1,0 +1,172 @@
+{
+    "classes": [
+        {
+            "className": "VideoDecoder",
+            "lineNumber": 22,
+            "methods": [
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "url",
+                            "type": "QString"
+                        },
+                        {
+                            "name": "sink",
+                            "type": "QVideoSink*"
+                        }
+                    ],
+                    "index": 4,
+                    "lineNumber": 30,
+                    "name": "startLive",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "url",
+                            "type": "QString"
+                        },
+                        {
+                            "name": "sink",
+                            "type": "QVideoSink*"
+                        },
+                        {
+                            "name": "startUtcUs",
+                            "type": "quint64"
+                        }
+                    ],
+                    "index": 5,
+                    "lineNumber": 31,
+                    "name": "startPlayback",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "url",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 6,
+                    "lineNumber": 32,
+                    "name": "switchTo",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "utcUs",
+                            "type": "quint64"
+                        }
+                    ],
+                    "index": 7,
+                    "lineNumber": 33,
+                    "name": "seekTo",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "paused",
+                            "type": "bool"
+                        }
+                    ],
+                    "index": 8,
+                    "lineNumber": 34,
+                    "name": "setPaused",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "rate",
+                            "type": "double"
+                        }
+                    ],
+                    "index": 9,
+                    "lineNumber": 35,
+                    "name": "setRate",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 10,
+                    "lineNumber": 36,
+                    "name": "stop",
+                    "returnType": "void"
+                }
+            ],
+            "object": true,
+            "properties": [
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 0,
+                    "lineNumber": 24,
+                    "name": "statusFa",
+                    "notify": "statusFaChanged",
+                    "override": false,
+                    "read": "statusFa",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QString",
+                    "user": false,
+                    "virtual": false
+                }
+            ],
+            "qualifiedClassName": "vms::VideoDecoder",
+            "signals": [
+                {
+                    "access": "public",
+                    "index": 0,
+                    "lineNumber": 41,
+                    "name": "decodingChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "utcUs",
+                            "type": "quint64"
+                        }
+                    ],
+                    "index": 1,
+                    "lineNumber": 42,
+                    "name": "framePresented",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 2,
+                    "lineNumber": 43,
+                    "name": "keyframeAligned",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 3,
+                    "lineNumber": 44,
+                    "name": "statusFaChanged",
+                    "returnType": "void"
+                }
+            ],
+            "superClasses": [
+                {
+                    "access": "public",
+                    "name": "QObject"
+                }
+            ]
+        }
+    ],
+    "inputFile": "video_decoder.h",
+    "outputRevision": 69
+}

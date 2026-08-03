@@ -61,5 +61,5 @@ int main(int argc, char* argv[]) {
     engine.rootContext()->setContextProperty("shamsi", &shamsi);
 
     engine.loadFromModule("Vms.Client", "Main");
-    return engine.exec();
+    return app.exec();
 }

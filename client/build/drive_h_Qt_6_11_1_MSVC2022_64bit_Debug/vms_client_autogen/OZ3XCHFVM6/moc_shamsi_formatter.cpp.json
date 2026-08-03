@@ -1,0 +1,162 @@
+{
+    "classes": [
+        {
+            "className": "ShamsiFormatter",
+            "lineNumber": 20,
+            "methods": [
+                {
+                    "access": "public",
+                    "index": 0,
+                    "isConst": true,
+                    "lineNumber": 27,
+                    "name": "nowShamsi",
+                    "returnType": "QString"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "utcMicroseconds",
+                            "type": "qulonglong"
+                        }
+                    ],
+                    "index": 1,
+                    "isConst": true,
+                    "lineNumber": 30,
+                    "name": "toShamsi",
+                    "returnType": "QString"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "utcMicroseconds",
+                            "type": "qulonglong"
+                        }
+                    ],
+                    "index": 2,
+                    "isConst": true,
+                    "lineNumber": 33,
+                    "name": "toShamsiShort",
+                    "returnType": "QString"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "utcMicroseconds",
+                            "type": "qulonglong"
+                        }
+                    ],
+                    "index": 3,
+                    "isConst": true,
+                    "lineNumber": 36,
+                    "name": "toShamsiDate",
+                    "returnType": "QString"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "text",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 4,
+                    "isConst": true,
+                    "lineNumber": 39,
+                    "name": "toPersianDigits",
+                    "returnType": "QString"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "jy",
+                            "type": "int"
+                        },
+                        {
+                            "name": "jm",
+                            "type": "int"
+                        },
+                        {
+                            "name": "jd",
+                            "type": "int"
+                        }
+                    ],
+                    "index": 5,
+                    "isConst": true,
+                    "lineNumber": 43,
+                    "name": "shamsiDateToUtcUs",
+                    "returnType": "qulonglong"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "utcMicroseconds",
+                            "type": "qulonglong"
+                        }
+                    ],
+                    "index": 6,
+                    "isConst": true,
+                    "lineNumber": 46,
+                    "name": "shamsiYear",
+                    "returnType": "int"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "utcMicroseconds",
+                            "type": "qulonglong"
+                        }
+                    ],
+                    "index": 7,
+                    "isConst": true,
+                    "lineNumber": 47,
+                    "name": "shamsiMonth",
+                    "returnType": "int"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "utcMicroseconds",
+                            "type": "qulonglong"
+                        }
+                    ],
+                    "index": 8,
+                    "isConst": true,
+                    "lineNumber": 48,
+                    "name": "shamsiDay",
+                    "returnType": "int"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "jm",
+                            "type": "int"
+                        }
+                    ],
+                    "index": 9,
+                    "isConst": true,
+                    "lineNumber": 49,
+                    "name": "shamsiMonthName",
+                    "returnType": "QString"
+                }
+            ],
+            "object": true,
+            "qualifiedClassName": "vms::ShamsiFormatter",
+            "superClasses": [
+                {
+                    "access": "public",
+                    "name": "QObject"
+                }
+            ]
+        }
+    ],
+    "inputFile": "shamsi_formatter.h",
+    "outputRevision": 69
+}

@@ -1,0 +1,257 @@
+{
+    "classes": [
+        {
+            "className": "GridModel",
+            "enums": [
+                {
+                    "isClass": false,
+                    "isFlag": false,
+                    "lineNumber": 44,
+                    "name": "Roles",
+                    "values": [
+                        "LayoutIdRole",
+                        "NameFaRole",
+                        "IsSharedRole",
+                        "CellCountRole"
+                    ]
+                }
+            ],
+            "lineNumber": 34,
+            "methods": [
+                {
+                    "access": "public",
+                    "index": 5,
+                    "lineNumber": 60,
+                    "name": "reload",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "row",
+                            "type": "int"
+                        }
+                    ],
+                    "index": 6,
+                    "lineNumber": 61,
+                    "name": "applyLayoutAt",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "cols",
+                            "type": "int"
+                        },
+                        {
+                            "name": "rows",
+                            "type": "int"
+                        }
+                    ],
+                    "index": 7,
+                    "lineNumber": 62,
+                    "name": "applyPresetGrid",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "cellIndex",
+                            "type": "int"
+                        },
+                        {
+                            "name": "cameraUuid",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 8,
+                    "lineNumber": 63,
+                    "name": "assignCamera",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "cellIndex",
+                            "type": "int"
+                        },
+                        {
+                            "name": "spanW",
+                            "type": "int"
+                        },
+                        {
+                            "name": "spanH",
+                            "type": "int"
+                        }
+                    ],
+                    "index": 9,
+                    "lineNumber": 64,
+                    "name": "mergeCells",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "nameFa",
+                            "type": "QString"
+                        },
+                        {
+                            "name": "shared",
+                            "type": "bool"
+                        }
+                    ],
+                    "index": 10,
+                    "lineNumber": 65,
+                    "name": "saveActiveLayout",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "jwtAccessToken",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 11,
+                    "lineNumber": 66,
+                    "name": "setAuthToken",
+                    "returnType": "void"
+                }
+            ],
+            "object": true,
+            "properties": [
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 0,
+                    "lineNumber": 36,
+                    "name": "apiBaseUrl",
+                    "notify": "apiBaseUrlChanged",
+                    "override": false,
+                    "read": "apiBaseUrl",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QString",
+                    "user": false,
+                    "virtual": false,
+                    "write": "setApiBaseUrl"
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 1,
+                    "lineNumber": 38,
+                    "name": "activeLayout",
+                    "notify": "activeLayoutChanged",
+                    "override": false,
+                    "read": "activeLayout",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QVariantMap",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 2,
+                    "lineNumber": 40,
+                    "name": "loading",
+                    "notify": "loadingChanged",
+                    "override": false,
+                    "read": "loading",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "bool",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 3,
+                    "lineNumber": 41,
+                    "name": "errorFa",
+                    "notify": "errorFaChanged",
+                    "override": false,
+                    "read": "errorFa",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QString",
+                    "user": false,
+                    "virtual": false
+                }
+            ],
+            "qualifiedClassName": "vms::GridModel",
+            "signals": [
+                {
+                    "access": "public",
+                    "index": 0,
+                    "lineNumber": 75,
+                    "name": "apiBaseUrlChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 1,
+                    "lineNumber": 76,
+                    "name": "activeLayoutChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 2,
+                    "lineNumber": 77,
+                    "name": "loadingChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 3,
+                    "lineNumber": 78,
+                    "name": "errorFaChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "cellIndex",
+                            "type": "int"
+                        },
+                        {
+                            "name": "cameraUuid",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 4,
+                    "lineNumber": 80,
+                    "name": "cellCameraChanged",
+                    "returnType": "void"
+                }
+            ],
+            "superClasses": [
+                {
+                    "access": "public",
+                    "name": "QAbstractListModel"
+                }
+            ]
+        }
+    ],
+    "inputFile": "grid_model.h",
+    "outputRevision": 69
+}

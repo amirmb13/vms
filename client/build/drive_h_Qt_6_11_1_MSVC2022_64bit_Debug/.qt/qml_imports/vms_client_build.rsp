@@ -1,0 +1,15 @@
+-rootPath
+H:/programming/VMS/video-management-system/client
+-cmake-output
+-output-file
+H:/programming/VMS/video-management-system/client/build/drive_h_Qt_6_11_1_MSVC2022_64bit_Debug/.qt/qml_imports/vms_client_build.cmake
+-importPath
+H:/programming/VMS/video-management-system/client/build/drive_h_Qt_6_11_1_MSVC2022_64bit_Debug
+-importPath
+H:/programming/VMS/video-management-system/client/build/drive_h_Qt_6_11_1_MSVC2022_64bit_Debug/Vms/Client
+-importPath
+H:/Qt/6.11.1/msvc2022_64/qml
+-qrcFiles
+H:/programming/VMS/video-management-system/client/build/drive_h_Qt_6_11_1_MSVC2022_64bit_Debug/.qt/rcc/qmake_Vms_Client.qrc
+H:/programming/VMS/video-management-system/client/build/drive_h_Qt_6_11_1_MSVC2022_64bit_Debug/.qt/rcc/vms_client_raw_qml_0.qrc
+H:/programming/VMS/video-management-system/client/build/drive_h_Qt_6_11_1_MSVC2022_64bit_Debug/.qt/rcc/vms_client_raw_res_0.qrc

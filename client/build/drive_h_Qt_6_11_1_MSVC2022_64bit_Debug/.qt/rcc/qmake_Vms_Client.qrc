@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="/qt/qml/Vms/Client">
+    <file alias="qmldir">H:/programming/VMS/video-management-system/client/build/drive_h_Qt_6_11_1_MSVC2022_64bit_Debug/Vms/Client/qmldir</file>
+  </qresource>
+</RCC>
+

@@ -1,0 +1,11 @@
+<RCC>
+  <qresource prefix="/qt/qml/Vms/Client/">
+    <file alias="qml/Main.qml">H:/programming/VMS/video-management-system/client/qml/Main.qml</file>
+    <file alias="qml/GridEngine.qml">H:/programming/VMS/video-management-system/client/qml/GridEngine.qml</file>
+    <file alias="qml/VideoCell.qml">H:/programming/VMS/video-management-system/client/qml/VideoCell.qml</file>
+    <file alias="qml/TimelineBar.qml">H:/programming/VMS/video-management-system/client/qml/TimelineBar.qml</file>
+    <file alias="qml/CameraTree.qml">H:/programming/VMS/video-management-system/client/qml/CameraTree.qml</file>
+    <file alias="qml/SmartMap.qml">H:/programming/VMS/video-management-system/client/qml/SmartMap.qml</file>
+  </qresource>
+</RCC>
+

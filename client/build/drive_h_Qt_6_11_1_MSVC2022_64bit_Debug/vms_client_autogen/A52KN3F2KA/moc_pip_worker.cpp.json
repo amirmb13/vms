@@ -1,0 +1,139 @@
+{
+    "classes": [
+        {
+            "className": "PipWorker",
+            "lineNumber": 25,
+            "methods": [
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "cameraUuid",
+                            "type": "QString"
+                        },
+                        {
+                            "name": "startUtcUs",
+                            "type": "quint64"
+                        },
+                        {
+                            "name": "sink",
+                            "type": "QVideoSink*"
+                        }
+                    ],
+                    "index": 2,
+                    "lineNumber": 38,
+                    "name": "open",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "utcUs",
+                            "type": "quint64"
+                        }
+                    ],
+                    "index": 3,
+                    "lineNumber": 40,
+                    "name": "seek",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "paused",
+                            "type": "bool"
+                        }
+                    ],
+                    "index": 4,
+                    "lineNumber": 41,
+                    "name": "setPaused",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "rate",
+                            "type": "double"
+                        }
+                    ],
+                    "index": 5,
+                    "lineNumber": 42,
+                    "name": "setRate",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 6,
+                    "lineNumber": 43,
+                    "name": "close",
+                    "returnType": "void"
+                }
+            ],
+            "object": true,
+            "properties": [
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 0,
+                    "lineNumber": 27,
+                    "name": "active",
+                    "notify": "activeChanged",
+                    "override": false,
+                    "read": "active",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "bool",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 1,
+                    "lineNumber": 28,
+                    "name": "positionUtcUs",
+                    "notify": "positionChanged",
+                    "override": false,
+                    "read": "positionUtcUs",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "quint64",
+                    "user": false,
+                    "virtual": false
+                }
+            ],
+            "qualifiedClassName": "vms::PipWorker",
+            "signals": [
+                {
+                    "access": "public",
+                    "index": 0,
+                    "lineNumber": 49,
+                    "name": "activeChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 1,
+                    "lineNumber": 50,
+                    "name": "positionChanged",
+                    "returnType": "void"
+                }
+            ],
+            "superClasses": [
+                {
+                    "access": "public",
+                    "name": "QObject"
+                }
+            ]
+        }
+    ],
+    "inputFile": "pip_worker.h",
+    "outputRevision": 69
+}

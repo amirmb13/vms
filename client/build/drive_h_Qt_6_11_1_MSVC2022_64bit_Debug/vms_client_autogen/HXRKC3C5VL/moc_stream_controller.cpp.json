@@ -1,0 +1,188 @@
+{
+    "classes": [
+        {
+            "className": "StreamController",
+            "lineNumber": 15,
+            "methods": [
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "cellIndex",
+                            "type": "int"
+                        },
+                        {
+                            "name": "cameraUuid",
+                            "type": "QString"
+                        },
+                        {
+                            "name": "profile",
+                            "type": "QString"
+                        },
+                        {
+                            "name": "sink",
+                            "type": "QVideoSink*"
+                        }
+                    ],
+                    "index": 3,
+                    "lineNumber": 23,
+                    "name": "attachLive",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "cellIndex",
+                            "type": "int"
+                        },
+                        {
+                            "name": "profile",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 4,
+                    "lineNumber": 26,
+                    "name": "switchProfile",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "cellIndex",
+                            "type": "int"
+                        },
+                        {
+                            "name": "cameraUuid",
+                            "type": "QString"
+                        },
+                        {
+                            "name": "sink",
+                            "type": "QVideoSink*"
+                        },
+                        {
+                            "name": "startUtcUs",
+                            "type": "quint64"
+                        }
+                    ],
+                    "index": 5,
+                    "lineNumber": 28,
+                    "name": "attachPlayback",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "cellIndex",
+                            "type": "int"
+                        }
+                    ],
+                    "index": 6,
+                    "lineNumber": 31,
+                    "name": "detach",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 7,
+                    "lineNumber": 32,
+                    "name": "detachAll",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "cellWidth",
+                            "type": "qreal"
+                        },
+                        {
+                            "name": "gridWidth",
+                            "type": "qreal"
+                        }
+                    ],
+                    "index": 8,
+                    "isConst": true,
+                    "lineNumber": 38,
+                    "name": "profileForCellSize",
+                    "returnType": "QString"
+                }
+            ],
+            "object": true,
+            "properties": [
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 0,
+                    "lineNumber": 17,
+                    "name": "relayHost",
+                    "notify": "relayHostChanged",
+                    "override": false,
+                    "read": "relayHost",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QString",
+                    "user": false,
+                    "virtual": false,
+                    "write": "setRelayHost"
+                }
+            ],
+            "qualifiedClassName": "vms::StreamController",
+            "signals": [
+                {
+                    "access": "public",
+                    "index": 0,
+                    "lineNumber": 44,
+                    "name": "relayHostChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "cellIndex",
+                            "type": "int"
+                        },
+                        {
+                            "name": "utcUs",
+                            "type": "quint64"
+                        }
+                    ],
+                    "index": 1,
+                    "lineNumber": 45,
+                    "name": "cellFramePresented",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "cellIndex",
+                            "type": "int"
+                        },
+                        {
+                            "name": "statusFa",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 2,
+                    "lineNumber": 46,
+                    "name": "cellStatusChanged",
+                    "returnType": "void"
+                }
+            ],
+            "superClasses": [
+                {
+                    "access": "public",
+                    "name": "QObject"
+                }
+            ]
+        }
+    ],
+    "inputFile": "stream_controller.h",
+    "outputRevision": 69
+}

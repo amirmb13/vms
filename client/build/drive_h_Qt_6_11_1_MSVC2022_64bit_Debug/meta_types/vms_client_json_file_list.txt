@@ -1,0 +1,7 @@
+H:/programming/VMS/video-management-system/client/build/drive_h_Qt_6_11_1_MSVC2022_64bit_Debug/vms_client_autogen/include/../A52KN3F2KA/moc_pip_worker.cpp.json
+H:/programming/VMS/video-management-system/client/build/drive_h_Qt_6_11_1_MSVC2022_64bit_Debug/vms_client_autogen/include/../A52KN3F2KA/moc_sync_playback.cpp.json
+H:/programming/VMS/video-management-system/client/build/drive_h_Qt_6_11_1_MSVC2022_64bit_Debug/vms_client_autogen/include/../HXRKC3C5VL/moc_stream_controller.cpp.json
+H:/programming/VMS/video-management-system/client/build/drive_h_Qt_6_11_1_MSVC2022_64bit_Debug/vms_client_autogen/include/../HXRKC3C5VL/moc_video_decoder.cpp.json
+H:/programming/VMS/video-management-system/client/build/drive_h_Qt_6_11_1_MSVC2022_64bit_Debug/vms_client_autogen/include/../IB36BOI56F/moc_grid_model.cpp.json
+H:/programming/VMS/video-management-system/client/build/drive_h_Qt_6_11_1_MSVC2022_64bit_Debug/vms_client_autogen/include/../M4YTXQ7V2H/moc_camera_tree_model.cpp.json
+H:/programming/VMS/video-management-system/client/build/drive_h_Qt_6_11_1_MSVC2022_64bit_Debug/vms_client_autogen/include/../OZ3XCHFVM6/moc_shamsi_formatter.cpp.json

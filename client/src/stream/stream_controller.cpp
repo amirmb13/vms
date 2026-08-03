@@ -1,7 +1,5 @@
 #include "stream/stream_controller.h"
-
 #include "stream/video_decoder.h"
-
 #include <QVideoSink>
 
 namespace vms {
@@ -10,9 +8,13 @@ StreamController::StreamController(QObject* parent) : QObject(parent) {}
 
 StreamController::~StreamController() { detachAll(); }
 
-// --- URL construction (relay only — never a camera address) -------------------
 QString StreamController::liveUrl(const QString& cameraUuid,
                                   const QString& profile) const {
+    if (cameraUuid.startsWith(QLatin1String("http://")) ||
+        cameraUuid.startsWith(QLatin1String("https://")) ||
+        cameraUuid.startsWith(QLatin1String("rtsp://"))) {
+        return cameraUuid;
+    }
     return QStringLiteral("rtsp://%1:8554/live/%2/%3")
         .arg(relay_host_, cameraUuid, profile);
 }
@@ -20,95 +22,133 @@ QString StreamController::liveUrl(const QString& cameraUuid,
 QString StreamController::archiveUrl(const QString& cameraUuid,
                                      quint64 startUtcUs) const {
     return QStringLiteral("rtsp://%1:8554/archive/%2?start=%3")
-        .arg(relay_host_, cameraUuid, QString::number(startUtcUs));
+    .arg(relay_host_, cameraUuid, QString::number(startUtcUs));
 }
 
-StreamController::CellSession& StreamController::sessionFor(int cellIndex) {
+std::shared_ptr<VideoDecoder> StreamController::getOrCreateDecoder(int cellIndex) {
+    std::lock_guard<std::mutex> lock(session_mutex_);
     auto it = sessions_.find(cellIndex);
-    if (it != sessions_.end()) return it->second;
+    if (it != sessions_.end() && it->second.decoder) {
+        return it->second.decoder;
+    }
 
     CellSession session;
-    session.decoder = std::make_unique<VideoDecoder>();
+    session.decoder = std::make_shared<VideoDecoder>();
 
-    // Bubble decoder telemetry up with the cell index attached.
-    VideoDecoder* dec = session.decoder.get();
-    connect(dec, &VideoDecoder::framePresented, this,
+    VideoDecoder* decPtr = session.decoder.get();
+    connect(decPtr, &VideoDecoder::framePresented, this,
             [this, cellIndex](quint64 utcUs) {
                 emit cellFramePresented(cellIndex, utcUs);
             });
-    connect(dec, &VideoDecoder::statusFaChanged, this, [this, cellIndex, dec] {
-        emit cellStatusChanged(cellIndex, dec->statusFa());
+    connect(decPtr, &VideoDecoder::statusFaChanged, this, [this, cellIndex, decPtr] {
+        emit cellStatusChanged(cellIndex, decPtr->statusFa());
     });
 
-    return sessions_.emplace(cellIndex, std::move(session)).first->second;
+    sessions_[cellIndex] = session;
+    return session.decoder;
 }
 
-// --- Session management ---------------------------------------------------------
 void StreamController::attachLive(int cellIndex, const QString& cameraUuid,
                                   const QString& profile, QVideoSink* sink) {
-    CellSession& s = sessionFor(cellIndex);
-    s.cameraUuid = cameraUuid;
-    s.profile = profile;
-    s.playbackMode = false;
-    s.decoder->startLive(liveUrl(cameraUuid, profile), sink);
+    if (!sink || cameraUuid.isEmpty()) return;
+
+    std::shared_ptr<VideoDecoder> decoder = getOrCreateDecoder(cellIndex);
+
+    {
+        std::lock_guard<std::mutex> lock(session_mutex_);
+        CellSession& s = sessions_[cellIndex];
+        s.cameraUuid = cameraUuid;
+        s.profile = profile;
+        s.playbackMode = false;
+    }
+
+    decoder->startLive(liveUrl(cameraUuid, profile), sink);
 }
 
 void StreamController::switchProfile(int cellIndex, const QString& profile) {
+    std::lock_guard<std::mutex> lock(session_mutex_);
     auto it = sessions_.find(cellIndex);
-    if (it == sessions_.end() || it->second.playbackMode) return;
+    if (it == sessions_.end() || it->second.playbackMode || !it->second.decoder) return;
+
     CellSession& s = it->second;
     if (s.profile == profile) return;
+
     s.profile = profile;
-    // I-frame-aligned swap inside the decoder — no black frames.
     s.decoder->switchTo(liveUrl(s.cameraUuid, profile));
 }
 
-void StreamController::attachPlayback(int cellIndex,
-                                      const QString& cameraUuid,
+void StreamController::attachPlayback(int cellIndex, const QString& cameraUuid,
                                       QVideoSink* sink, quint64 startUtcUs) {
-    CellSession& s = sessionFor(cellIndex);
-    s.cameraUuid = cameraUuid;
-    s.playbackMode = true;
-    s.decoder->startPlayback(archiveUrl(cameraUuid, startUtcUs), sink,
-                             startUtcUs);
+    if (!sink || cameraUuid.isEmpty()) return;
+
+    std::shared_ptr<VideoDecoder> decoder = getOrCreateDecoder(cellIndex);
+
+    {
+        std::lock_guard<std::mutex> lock(session_mutex_);
+        CellSession& s = sessions_[cellIndex];
+        s.cameraUuid = cameraUuid;
+        s.playbackMode = true;
+    }
+
+    decoder->startPlayback(archiveUrl(cameraUuid, startUtcUs), sink, startUtcUs);
 }
 
 void StreamController::detach(int cellIndex) {
-    auto it = sessions_.find(cellIndex);
-    if (it == sessions_.end()) return;
-    it->second.decoder->stop();
-    sessions_.erase(it);
+    std::shared_ptr<VideoDecoder> decToStop;
+    {
+        std::lock_guard<std::mutex> lock(session_mutex_);
+        auto it = sessions_.find(cellIndex);
+        if (it != sessions_.end()) {
+            decToStop = it->second.decoder;
+            sessions_.erase(it);
+        }
+    }
+    if (decToStop) {
+        decToStop->stop();
+    }
 }
 
 void StreamController::detachAll() {
-    for (auto& [idx, s] : sessions_) s.decoder->stop();
-    sessions_.clear();
+    std::vector<std::shared_ptr<VideoDecoder>> decodersToStop;
+    {
+        std::lock_guard<std::mutex> lock(session_mutex_);
+        for (auto& [idx, s] : sessions_) {
+            if (s.decoder) decodersToStop.push_back(s.decoder);
+        }
+        sessions_.clear();
+    }
+    for (auto& dec : decodersToStop) {
+        dec->stop();
+    }
 }
 
-// --- Sync playback fan-out --------------------------------------------------------
 void StreamController::broadcastSeek(quint64 utcUs) {
-    for (auto& [idx, s] : sessions_)
-        if (s.playbackMode) s.decoder->seekTo(utcUs);
+    std::lock_guard<std::mutex> lock(session_mutex_);
+    for (auto& [idx, s] : sessions_) {
+        if (s.playbackMode && s.decoder) s.decoder->seekTo(utcUs);
+    }
 }
 
 void StreamController::broadcastPaused(bool paused) {
-    for (auto& [idx, s] : sessions_)
-        if (s.playbackMode) s.decoder->setPaused(paused);
+    std::lock_guard<std::mutex> lock(session_mutex_);
+    for (auto& [idx, s] : sessions_) {
+        if (s.playbackMode && s.decoder) s.decoder->setPaused(paused);
+    }
 }
 
 void StreamController::broadcastRate(double rate) {
-    for (auto& [idx, s] : sessions_)
-        if (s.playbackMode) s.decoder->setRate(rate);
+    std::lock_guard<std::mutex> lock(session_mutex_);
+    for (auto& [idx, s] : sessions_) {
+        if (s.playbackMode && s.decoder) s.decoder->setRate(rate);
+    }
 }
 
-// --- Adaptive profile policy --------------------------------------------------------
-QString StreamController::profileForCellSize(qreal cellWidth,
-                                             qreal gridWidth) const {
+QString StreamController::profileForCellSize(qreal cellWidth, qreal gridWidth) const {
     if (gridWidth <= 0) return QStringLiteral("sub");
     const qreal ratio = cellWidth / gridWidth;
-    if (ratio > 0.5) return QStringLiteral("main");   // fullscreen / 2x2 merged
-    if (ratio > 0.25) return QStringLiteral("mid");   // 4-camera grid
-    return QStringLiteral("sub");                     // dense wall (16..64)
+    if (ratio > 0.5) return QStringLiteral("main");
+    if (ratio > 0.25) return QStringLiteral("mid");
+    return QStringLiteral("sub");
 }
 
 void StreamController::setRelayHost(const QString& host) {

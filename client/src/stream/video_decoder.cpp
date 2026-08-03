@@ -1,12 +1,12 @@
 #include "stream/video_decoder.h"
 
+#include <QPointer>
 #include <QVideoFrame>
 #include <QVideoFrameFormat>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
-#include <libavutil/hwcontext.h>
 #include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
 }
@@ -14,17 +14,6 @@ extern "C" {
 #include <chrono>
 
 namespace vms {
-namespace {
-
-// Hardware decoder preference order — mandate §2 (GPU first, CPU fallback).
-constexpr AVHWDeviceType kHwPreference[] = {
-#ifdef _WIN32
-    AV_HWDEVICE_TYPE_D3D11VA, AV_HWDEVICE_TYPE_DXVA2,
-#endif
-    AV_HWDEVICE_TYPE_CUDA, AV_HWDEVICE_TYPE_VAAPI, AV_HWDEVICE_TYPE_QSV,
-};
-
-}  // namespace
 
 VideoDecoder::VideoDecoder(QObject* parent) : QObject(parent) {}
 
@@ -62,95 +51,94 @@ void VideoDecoder::setRate(double rate) { rate_.store(rate); }
 void VideoDecoder::stop() {
     running_.store(false);
     if (worker_.joinable()) worker_.join();
-    if (sws_) { sws_freeContext(sws_); sws_ = nullptr; }
-    if (hw_device_ctx_) { av_buffer_unref(&hw_device_ctx_); }
+    if (sws_) {
+        sws_freeContext(sws_);
+        sws_ = nullptr;
+    }
     emit decodingChanged();
 }
 
-// --- Input / hardware setup -----------------------------------------------------
+// --- Input setup --------------------------------------------------------------
 bool VideoDecoder::openInput(const QString& url, AVFormatContext*& fmt,
                              AVCodecContext*& codec, int& videoStream) {
     fmt = nullptr;
     AVDictionary* opts = nullptr;
-    // Relay is on a trusted LAN: prefer TCP interleave for loss-free delivery.
+
     av_dict_set(&opts, "rtsp_transport", "tcp", 0);
-    av_dict_set(&opts, "stimeout", "5000000", 0);  // 5s socket timeout
+    av_dict_set(&opts, "stimeout", "3000000", 0);
+    av_dict_set(&opts, "timeout", "3000000", 0);
+    av_dict_set(&opts, "rw_timeout", "3000000", 0);
 
     if (avformat_open_input(&fmt, url.toUtf8().constData(), nullptr, &opts) < 0) {
         av_dict_free(&opts);
-        setStatusFa(QStringLiteral("اتصال به سرور بازپخش برقرار نشد"));
+        setStatusFa(QStringLiteral("خطا در باز کردن استریم"));
         return false;
     }
     av_dict_free(&opts);
+
     if (avformat_find_stream_info(fmt, nullptr) < 0) return false;
 
-    videoStream = av_find_best_stream(fmt, AVMEDIA_TYPE_VIDEO, -1, -1,
-                                      nullptr, 0);
+    videoStream = av_find_best_stream(fmt, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
     if (videoStream < 0) return false;
 
-    const AVCodec* dec =
-        avcodec_find_decoder(fmt->streams[videoStream]->codecpar->codec_id);
+    const AVCodec* dec = avcodec_find_decoder(fmt->streams[videoStream]->codecpar->codec_id);
     if (!dec) return false;
 
     codec = avcodec_alloc_context3(dec);
     avcodec_parameters_to_context(codec, fmt->streams[videoStream]->codecpar);
-    codec->thread_count = 0;  // auto — CPU fallback uses all cores
 
-    initHardwareDecoder(codec);  // best-effort; CPU decode if all HW fails
+    // دکود نرم‌افزاری چندتردی برای پایداری کامل
+    codec->thread_count = 0;
+    codec->thread_type = FF_THREAD_FRAME;
 
+    setStatusFa(QStringLiteral("رمزگشایی فعال شد"));
     return avcodec_open2(codec, dec, nullptr) >= 0;
 }
 
-bool VideoDecoder::initHardwareDecoder(AVCodecContext* codec) {
-    for (AVHWDeviceType type : kHwPreference) {
-        AVBufferRef* ctx = nullptr;
-        if (av_hwdevice_ctx_create(&ctx, type, nullptr, nullptr, 0) == 0) {
-            hw_device_ctx_ = ctx;
-            codec->hw_device_ctx = av_buffer_ref(ctx);
-            setStatusFa(QStringLiteral("رمزگشایی سخت‌افزاری فعال شد"));
-            return true;
-        }
-    }
-    setStatusFa(QStringLiteral("رمزگشایی نرم‌افزاری (پردازنده) فعال شد"));
-    return false;  // CPU software decode fallback
+bool VideoDecoder::initHardwareDecoder(AVCodecContext*) {
+    return false;
 }
 
-// --- Frame presentation -----------------------------------------------------------
+// --- Frame presentation (کاملاً Thread-Safe و ایزوله برای هر Cell) -----------
 void VideoDecoder::presentFrame(AVFrame* frame, quint64 utcUs) {
-    if (!sink_) return;
+    if (!sink_ || !frame || frame->width <= 0 || frame->height <= 0 ||
+        frame->format == AV_PIX_FMT_NONE || !frame->data[0]) return;
 
-    // If the frame lives in VRAM, transfer once (zero extra copies after this).
-    AVFrame* cpu = frame;
-    AVFrame* transfer = nullptr;
-    if (frame->hw_frames_ctx) {
-        transfer = av_frame_alloc();
-        if (av_hwframe_transfer_data(transfer, frame, 0) < 0) {
-            av_frame_free(&transfer);
-            return;
-        }
-        cpu = transfer;
-    }
+    const int width = frame->width;
+    const int height = frame->height;
+    const int linesize = width * 4;
 
-    // Wrap into a mappable QVideoFrame; the scene graph uploads it as a
-    // QSGTexture on the RHI thread.
-    QVideoFrameFormat format(QSize(cpu->width, cpu->height),
-                             QVideoFrameFormat::Format_NV12);
-    QVideoFrame vf(format);
-    if (vf.map(QVideoFrame::WriteOnly)) {
-        // Convert whatever pixel format arrived into NV12 in-place.
-        sws_ = sws_getCachedContext(
-            sws_, cpu->width, cpu->height,
-            static_cast<AVPixelFormat>(cpu->format), cpu->width, cpu->height,
-            AV_PIX_FMT_NV12, SWS_BILINEAR, nullptr, nullptr, nullptr);
-        uint8_t* dst[2] = {vf.bits(0), vf.bits(1)};
-        int dstStride[2] = {vf.bytesPerLine(0), vf.bytesPerLine(1)};
-        sws_scale(sws_, cpu->data, cpu->linesize, 0, cpu->height, dst,
-                  dstStride);
-        vf.unmap();
-        sink_->setVideoFrame(vf);
-        emit framePresented(utcUs);
-    }
-    if (transfer) av_frame_free(&transfer);
+    const size_t safeBufferSize = static_cast<size_t>(linesize) * height + 256;
+    std::vector<uint8_t> buffer(safeBufferSize);
+
+    SwsContext* localSws = sws_getContext(
+        width, height, static_cast<AVPixelFormat>(frame->format),
+        width, height, AV_PIX_FMT_RGBA,
+        SWS_FAST_BILINEAR, nullptr, nullptr, nullptr);
+
+    if (!localSws) return;
+
+    uint8_t* dst[4] = { buffer.data(), nullptr, nullptr, nullptr };
+    int dstStride[4] = { linesize, 0, 0, 0 };
+
+    sws_scale(localSws, frame->data, frame->linesize, 0, height, dst, dstStride);
+    sws_freeContext(localSws);
+
+    // کپی عمیق (copy) برای قطع وابستگی بافر بین خانه‌های مختلف گرید
+    QImage frameImg = QImage(buffer.data(), width, height, linesize, QImage::Format_RGBA8888).copy();
+
+    QVideoFrame vf(frameImg);
+    QPointer<QVideoSink> safeSink = sink_;
+
+    QMetaObject::invokeMethod(
+        sink_,
+        [safeSink, vf, this, utcUs]() {
+            if (safeSink) {
+                safeSink->setVideoFrame(vf);
+                emit framePresented(utcUs);
+            }
+        },
+        Qt::QueuedConnection);
 }
 
 // --- Decode loop -----------------------------------------------------------------
@@ -167,21 +155,29 @@ void VideoDecoder::decodeLoop(QString url, bool playbackMode) {
     }
     setStatusFa(QStringLiteral("در حال پخش"));
 
+    AVRational fr = av_guess_frame_rate(fmt, fmt->streams[videoStream], nullptr);
+    double sourceFps = (fr.num > 0 && fr.den > 0) ? av_q2d(fr) : 25.0;
+
+    const bool isLocalFile = !url.startsWith(QLatin1String("rtsp://")) &&
+                             !url.startsWith(QLatin1String("http://")) &&
+                             !url.startsWith(QLatin1String("https://"));
+
     AVPacket* pkt = av_packet_alloc();
     AVFrame* frame = av_frame_alloc();
 
-    // Pending seamless switch state.
     AVFormatContext* nextFmt = nullptr;
     AVCodecContext* nextCodec = nullptr;
     int nextStream = -1;
 
+    bool waiting_for_keyframe = true;
+    auto lastFrameTime = steady_clock::now();
+
     while (running_.load()) {
-        // --- Seamless profile switch: open next session, swap at I-frame ----
+        // --- Seamless profile switch ----
         if (switch_pending_.load() && !nextFmt) {
             QString target;
             { std::lock_guard<std::mutex> l(url_mutex_); target = pending_url_; }
             if (openInput(target, nextFmt, nextCodec, nextStream)) {
-                // Drain until the FIRST keyframe of the new session, then swap.
                 AVPacket* p2 = av_packet_alloc();
                 while (running_.load() && av_read_frame(nextFmt, p2) >= 0) {
                     const bool key = (p2->flags & AV_PKT_FLAG_KEY) &&
@@ -194,6 +190,7 @@ void VideoDecoder::decodeLoop(QString url, bool playbackMode) {
                         nextFmt = nullptr; nextCodec = nullptr;
                         avcodec_send_packet(codec, p2);
                         switch_pending_.store(false);
+                        waiting_for_keyframe = false;
                         emit keyframeAligned();
                         break;
                     }
@@ -205,7 +202,7 @@ void VideoDecoder::decodeLoop(QString url, bool playbackMode) {
             }
         }
 
-        // --- Sync-playback seek (archive mode) ------------------------------
+        // --- Sync-playback seek ----------------------------------------------
         if (playbackMode) {
             const quint64 target = seek_target_us_.exchange(0);
             if (target != 0) {
@@ -214,6 +211,7 @@ void VideoDecoder::decodeLoop(QString url, bool playbackMode) {
                     fmt->streams[videoStream]->time_base);
                 av_seek_frame(fmt, videoStream, ts, AVSEEK_FLAG_BACKWARD);
                 avcodec_flush_buffers(codec);
+                waiting_for_keyframe = true;
             }
             if (paused_.load()) {
                 std::this_thread::sleep_for(milliseconds(20));
@@ -222,30 +220,58 @@ void VideoDecoder::decodeLoop(QString url, bool playbackMode) {
         }
 
         if (av_read_frame(fmt, pkt) < 0) {
+            if (fmt->pb && avio_feof(fmt->pb)) {
+                av_seek_frame(fmt, videoStream, 0, AVSEEK_FLAG_BACKWARD);
+                avcodec_flush_buffers(codec);
+                waiting_for_keyframe = true;
+                continue;
+            }
             std::this_thread::sleep_for(milliseconds(100));
             continue;
         }
+
         if (pkt->stream_index != videoStream) {
             av_packet_unref(pkt);
             continue;
         }
+
+        if (waiting_for_keyframe) {
+            if (pkt->flags & AV_PKT_FLAG_KEY) {
+                waiting_for_keyframe = false;
+            } else {
+                av_packet_unref(pkt);
+                continue;
+            }
+        }
+
         avcodec_send_packet(codec, pkt);
         av_packet_unref(pkt);
 
         while (avcodec_receive_frame(codec, frame) >= 0 && running_.load()) {
             const AVRational tb = fmt->streams[videoStream]->time_base;
             const quint64 utcUs = frame->pts > 0
-                ? static_cast<quint64>(av_rescale_q(frame->pts, tb,
-                                                    AVRational{1, 1000000}))
-                : 0;
+                                      ? static_cast<quint64>(av_rescale_q(frame->pts, tb,
+                                                                          AVRational{1, 1000000}))
+                                      : 0;
+
             presentFrame(frame, utcUs);
 
-            // Archive pacing honours the sync-playback rate.
-            if (playbackMode) {
-                const double r = rate_.load();
-                const int frameMs = static_cast<int>(40.0 / (r > 0 ? r : 1.0));
-                std::this_thread::sleep_for(milliseconds(frameMs));
+            // کنترل نرخ فریم برای فایل‌های محلی (Pacing)
+            if (isLocalFile || playbackMode) {
+                const double currentRate = rate_.load();
+                const double effectiveFps = sourceFps * (currentRate > 0 ? currentRate : 1.0);
+                const int frameDelayMs = static_cast<int>(1000.0 / (effectiveFps > 0 ? effectiveFps : 25.0));
+
+                auto now = steady_clock::now();
+                auto elapsedMs = duration_cast<milliseconds>(now - lastFrameTime).count();
+                int sleepMs = frameDelayMs - static_cast<int>(elapsedMs);
+
+                if (sleepMs > 0 && sleepMs < 500) {
+                    std::this_thread::sleep_for(milliseconds(sleepMs));
+                }
+                lastFrameTime = steady_clock::now();
             }
+
             av_frame_unref(frame);
         }
     }
@@ -261,7 +287,6 @@ void VideoDecoder::decodeLoop(QString url, bool playbackMode) {
 void VideoDecoder::setStatusFa(const QString& s) {
     if (status_fa_ == s) return;
     status_fa_ = s;
-    // Cross-thread safe: emit via queued connection semantics.
     QMetaObject::invokeMethod(this, [this] { emit statusFaChanged(); },
                               Qt::QueuedConnection);
 }
