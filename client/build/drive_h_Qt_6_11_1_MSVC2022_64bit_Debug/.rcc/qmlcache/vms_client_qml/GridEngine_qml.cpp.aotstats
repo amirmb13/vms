@@ -8,17 +8,25 @@
                         {
                             "codegenResult": 2,
                             "column": 30,
-                            "durationMicroseconds": 1000,
+                            "durationMicroseconds": 0,
                             "functionName": "layoutJson",
                             "line": 22,
                             "message": "Cannot generate efficient code for storing an array in a non-sequence type"
+                        },
+                        {
+                            "codegenResult": 0,
+                            "column": 37,
+                            "durationMicroseconds": 0,
+                            "functionName": "cameraAssignments",
+                            "line": 39,
+                            "message": ""
                         },
                         {
                             "codegenResult": 2,
                             "column": 5,
                             "durationMicroseconds": 0,
                             "functionName": "applyLayout",
-                            "line": 35,
+                            "line": 41,
                             "message": "Functions without type annotations won't be compiled"
                         },
                         {
@@ -26,7 +34,7 @@
                             "column": 5,
                             "durationMicroseconds": 0,
                             "functionName": "assignCameraToFocusedCell",
-                            "line": 42,
+                            "line": 49,
                             "message": "Functions without type annotations won't be compiled"
                         },
                         {
@@ -34,7 +42,7 @@
                             "column": 37,
                             "durationMicroseconds": 0,
                             "functionName": "gridCols",
-                            "line": 52,
+                            "line": 61,
                             "message": "Cannot load property grid from GridEngine::layoutJson with type QVariant."
                         },
                         {
@@ -42,7 +50,7 @@
                             "column": 37,
                             "durationMicroseconds": 0,
                             "functionName": "gridRows",
-                            "line": 54,
+                            "line": 63,
                             "message": "Cannot load property grid from GridEngine::layoutJson with type QVariant."
                         },
                         {
@@ -50,7 +58,7 @@
                             "column": 35,
                             "durationMicroseconds": 0,
                             "functionName": "cellW",
-                            "line": 56,
+                            "line": 65,
                             "message": ""
                         },
                         {
@@ -58,7 +66,7 @@
                             "column": 35,
                             "durationMicroseconds": 0,
                             "functionName": "cellH",
-                            "line": 57,
+                            "line": 66,
                             "message": ""
                         },
                         {
@@ -66,7 +74,7 @@
                             "column": 33,
                             "durationMicroseconds": 0,
                             "functionName": "rtl",
-                            "line": 58,
+                            "line": 67,
                             "message": ""
                         },
                         {
@@ -74,7 +82,7 @@
                             "column": 16,
                             "durationMicroseconds": 0,
                             "functionName": "model",
-                            "line": 62,
+                            "line": 71,
                             "message": "Cannot access value for name layoutJson"
                         },
                         {
@@ -82,7 +90,7 @@
                             "column": 17,
                             "durationMicroseconds": 0,
                             "functionName": "flippedX",
-                            "line": 72,
+                            "line": 81,
                             "message": "Cannot access value for name engine"
                         },
                         {
@@ -90,7 +98,7 @@
                             "column": 16,
                             "durationMicroseconds": 0,
                             "functionName": "x",
-                            "line": 75,
+                            "line": 84,
                             "message": "Cannot access value for name engine"
                         },
                         {
@@ -98,7 +106,7 @@
                             "column": 16,
                             "durationMicroseconds": 0,
                             "functionName": "y",
-                            "line": 76,
+                            "line": 85,
                             "message": "Cannot load property y from (component in H:/programming/VMS/video-management-system/client/qml/GridEngine.qml)::modelData with type QVariant."
                         },
                         {
@@ -106,7 +114,7 @@
                             "column": 20,
                             "durationMicroseconds": 0,
                             "functionName": "width",
-                            "line": 77,
+                            "line": 86,
                             "message": "Cannot load property w from (component in H:/programming/VMS/video-management-system/client/qml/GridEngine.qml)::modelData with type QVariant."
                         },
                         {
@@ -114,23 +122,23 @@
                             "column": 21,
                             "durationMicroseconds": 0,
                             "functionName": "height",
-                            "line": 78,
+                            "line": 87,
                             "message": "Cannot load property h from (component in H:/programming/VMS/video-management-system/client/qml/GridEngine.qml)::modelData with type QVariant."
                         },
                         {
                             "codegenResult": 2,
-                            "column": 17,
+                            "column": 50,
                             "durationMicroseconds": 0,
                             "functionName": "cameraUuid",
-                            "line": 85,
-                            "message": "Cannot load property camera_uuid from (component in H:/programming/VMS/video-management-system/client/qml/GridEngine.qml)::modelData with type QVariant."
+                            "line": 95,
+                            "message": "Cannot access value for name engine"
                         },
                         {
                             "codegenResult": 2,
                             "column": 27,
                             "durationMicroseconds": 0,
                             "functionName": "width",
-                            "line": 81,
+                            "line": 90,
                             "message": "Cannot access value for name engine"
                         },
                         {
@@ -138,7 +146,7 @@
                             "column": 27,
                             "durationMicroseconds": 0,
                             "functionName": "color",
-                            "line": 82,
+                            "line": 91,
                             "message": "Cannot access value for name engine"
                         },
                         {
@@ -146,7 +154,7 @@
                             "column": 25,
                             "durationMicroseconds": 0,
                             "functionName": "active",
-                            "line": 92,
+                            "line": 107,
                             "message": ""
                         },
                         {
@@ -154,15 +162,15 @@
                             "column": 27,
                             "durationMicroseconds": 0,
                             "functionName": "onLoaded",
-                            "line": 94,
-                            "message": "Type (component in H:/programming/VMS/video-management-system/client/qml/GridEngine.qml)::item with type QObject does not have a property cameraUuid for writing"
+                            "line": 109,
+                            "message": "Type (component in H:/programming/VMS/video-management-system/client/qml/GridEngine.qml)::item with type QObject does not have a property cellIndex for writing"
                         },
                         {
                             "codegenResult": 0,
                             "column": 31,
                             "durationMicroseconds": 0,
                             "functionName": "fill",
-                            "line": 90,
+                            "line": 105,
                             "message": ""
                         },
                         {
@@ -170,7 +178,7 @@
                             "column": 26,
                             "durationMicroseconds": 0,
                             "functionName": "visible",
-                            "line": 107,
+                            "line": 132,
                             "message": "Could not find property \"visible\"."
                         },
                         {
@@ -178,7 +186,7 @@
                             "column": 35,
                             "durationMicroseconds": 0,
                             "functionName": "centerIn",
-                            "line": 106,
+                            "line": 131,
                             "message": "Could not find property \"centerIn\"."
                         },
                         {
@@ -186,7 +194,7 @@
                             "column": 27,
                             "durationMicroseconds": 0,
                             "functionName": "onTapped",
-                            "line": 114,
+                            "line": 139,
                             "message": "Cannot access value for name engine"
                         }
                     ],

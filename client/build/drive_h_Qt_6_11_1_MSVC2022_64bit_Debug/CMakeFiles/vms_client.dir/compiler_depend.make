@@ -4082,6 +4082,13 @@ CMakeFiles\vms_client.dir\src\main.cpp.obj: H:\programming\VMS\video-management-
   H:\programming\VMS\video-management-system\client\src\stream\stream_controller.h \
   H:\Qt\6.11.1\msvc2022_64\include\QtCore\QObject \
   H:\Qt\6.11.1\msvc2022_64\include\QtCore\QString \
+  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\mutex" \
+  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\thread" \
+  "F:\Windows Kits\10\include\10.0.26100.0\ucrt\process.h" \
+  "F:\Windows Kits\10\include\10.0.26100.0\ucrt\corecrt_startup.h" \
+  "F:\Windows Kits\10\include\10.0.26100.0\ucrt\math.h" \
+  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\vcruntime_startup.h" \
+  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\stop_token" \
   H:\programming\VMS\video-management-system\client\src\playback\sync_playback.h \
   H:\Qt\6.11.1\msvc2022_64\include\QtCore\QObject \
   H:\Qt\6.11.1\msvc2022_64\include\QtCore\QTimer \
@@ -5234,6 +5241,13 @@ CMakeFiles\vms_client.dir\src\playback\sync_playback.cpp.obj: H:\programming\VMS
   H:\programming\VMS\video-management-system\client\src\stream\stream_controller.h \
   H:\Qt\6.11.1\msvc2022_64\include\QtCore\QObject \
   H:\Qt\6.11.1\msvc2022_64\include\QtCore\QString \
+  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\mutex" \
+  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\thread" \
+  "F:\Windows Kits\10\include\10.0.26100.0\ucrt\process.h" \
+  "F:\Windows Kits\10\include\10.0.26100.0\ucrt\corecrt_startup.h" \
+  "F:\Windows Kits\10\include\10.0.26100.0\ucrt\math.h" \
+  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\vcruntime_startup.h" \
+  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\stop_token" \
   H:\Qt\6.11.1\msvc2022_64\include\QtCore\QDateTime \
   H:\Qt\6.11.1\msvc2022_64\include\QtCore\qdatetime.h \
   H:\Qt\6.11.1\msvc2022_64\include\QtCore\qcalendar.h \
@@ -5588,6 +5602,13 @@ CMakeFiles\vms_client.dir\src\stream\stream_controller.cpp.obj: H:\programming\V
   "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\ios" \
   "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\sstream" \
   H:\Qt\6.11.1\msvc2022_64\include\QtCore\QString \
+  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\mutex" \
+  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\thread" \
+  "F:\Windows Kits\10\include\10.0.26100.0\ucrt\process.h" \
+  "F:\Windows Kits\10\include\10.0.26100.0\ucrt\corecrt_startup.h" \
+  "F:\Windows Kits\10\include\10.0.26100.0\ucrt\math.h" \
+  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\vcruntime_startup.h" \
+  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\stop_token" \
   H:\programming\VMS\video-management-system\client\src\stream\video_decoder.h \
   H:\Qt\6.11.1\msvc2022_64\include\QtCore\QObject \
   H:\Qt\6.11.1\msvc2022_64\include\QtCore\QString \
@@ -5603,13 +5624,6 @@ CMakeFiles\vms_client.dir\src\stream\stream_controller.cpp.obj: H:\programming\V
   H:\Qt\6.11.1\msvc2022_64\include\QtCore\qcompilerdetection.h \
   H:\Qt\6.11.1\msvc2022_64\include\QtGui\qwindowdefs.h \
   H:\Qt\6.11.1\msvc2022_64\include\QtGui\qwindowdefs_win.h \
-  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\mutex" \
-  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\thread" \
-  "F:\Windows Kits\10\include\10.0.26100.0\ucrt\process.h" \
-  "F:\Windows Kits\10\include\10.0.26100.0\ucrt\corecrt_startup.h" \
-  "F:\Windows Kits\10\include\10.0.26100.0\ucrt\math.h" \
-  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\vcruntime_startup.h" \
-  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\stop_token" \
   C:\Users\Sahra\scoop\apps\ffmpeg-shared\current\include\libavcodec\avcodec.h \
   C:\Users\Sahra\scoop\apps\ffmpeg-shared\current\include\libavutil\samplefmt.h \
   C:\Users\Sahra\scoop\apps\ffmpeg-shared\current\include\libavutil\attributes.h \
@@ -6509,6 +6523,13 @@ CMakeFiles\vms_client.dir\vms_client_autogen\mocs_compilation.cpp.obj: vms_clien
   vms_client_autogen\HXRKC3C5VL\..\..\..\..\src\stream\stream_controller.h \
   H:\Qt\6.11.1\msvc2022_64\include\QtCore\QObject \
   H:\Qt\6.11.1\msvc2022_64\include\QtCore\QString \
+  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\mutex" \
+  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\thread" \
+  "F:\Windows Kits\10\include\10.0.26100.0\ucrt\process.h" \
+  "F:\Windows Kits\10\include\10.0.26100.0\ucrt\corecrt_startup.h" \
+  "F:\Windows Kits\10\include\10.0.26100.0\ucrt\math.h" \
+  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\vcruntime_startup.h" \
+  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\stop_token" \
   vms_client_autogen\HXRKC3C5VL\moc_video_decoder.cpp \
   vms_client_autogen\HXRKC3C5VL\..\..\..\..\src\stream\video_decoder.h \
   H:\Qt\6.11.1\msvc2022_64\include\QtCore\QObject \
@@ -6525,13 +6546,6 @@ CMakeFiles\vms_client.dir\vms_client_autogen\mocs_compilation.cpp.obj: vms_clien
   H:\Qt\6.11.1\msvc2022_64\include\QtCore\qcompilerdetection.h \
   H:\Qt\6.11.1\msvc2022_64\include\QtGui\qwindowdefs.h \
   H:\Qt\6.11.1\msvc2022_64\include\QtGui\qwindowdefs_win.h \
-  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\mutex" \
-  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\thread" \
-  "F:\Windows Kits\10\include\10.0.26100.0\ucrt\process.h" \
-  "F:\Windows Kits\10\include\10.0.26100.0\ucrt\corecrt_startup.h" \
-  "F:\Windows Kits\10\include\10.0.26100.0\ucrt\math.h" \
-  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\vcruntime_startup.h" \
-  "H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\stop_token" \
   C:\Users\Sahra\scoop\apps\ffmpeg-shared\current\include\libavcodec\avcodec.h \
   C:\Users\Sahra\scoop\apps\ffmpeg-shared\current\include\libavutil\samplefmt.h \
   C:\Users\Sahra\scoop\apps\ffmpeg-shared\current\include\libavutil\attributes.h \
@@ -7999,6 +8013,10 @@ H:\Qt\6.11.1\msvc2022_64\include\QtCore\QLocale:
 
 H:\programming\VMS\video-management-system\client\src\stream\stream_controller.h:
 
+"H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\vcruntime_startup.h":
+
+"H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\stop_token":
+
 vms_client_autogen\HXRKC3C5VL\moc_stream_controller.cpp:
 
 H:\programming\VMS\video-management-system\client\src\playback\sync_playback.h:
@@ -8008,10 +8026,6 @@ H:\Qt\6.11.1\msvc2022_64\include\QtCore\QTimer:
 H:\Qt\6.11.1\msvc2022_64\include\QtMultimedia\QVideoSink:
 
 H:\Qt\6.11.1\msvc2022_64\include\QtMultimedia\qtmultimediaexports.h:
-
-"H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\vcruntime_startup.h":
-
-"H:\Visual Studio\product\VC\Tools\MSVC\14.51.36231\include\stop_token":
 
 C:\Users\Sahra\scoop\apps\ffmpeg-shared\current\include\libavutil\avutil.h:
 

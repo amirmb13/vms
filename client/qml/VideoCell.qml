@@ -26,12 +26,15 @@ Item {
     property var lastFrameUtcUs: 0
 
     onCameraUuidChanged: reattach()
+    onCellIndexChanged: reattach()
     onPreferredProfileChanged:
-        if (cameraUuid.length > 0)
+        if (cellIndex >= 0 && cameraUuid.length > 0)
             streamController.switchProfile(cellIndex, preferredProfile)
 
     function reattach() {
-        if (cameraUuid.length > 0)
+        // Never attach with an unset index: cellIndex keys the decoder session
+        // in StreamController; -1 would make every cell share one decoder.
+        if (cellIndex >= 0 && cameraUuid.length > 0)
             streamController.attachLive(cellIndex, cameraUuid,
                                         preferredProfile, videoOutput.videoSink)
     }

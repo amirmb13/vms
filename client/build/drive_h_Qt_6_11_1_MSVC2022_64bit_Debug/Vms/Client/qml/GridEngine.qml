@@ -32,8 +32,15 @@ Rectangle {
     // the StreamController owns profile selection vs. the Media Relay).
     signal cellCameraChanged(int cellIndex, string cameraUuid)
 
+    // Per-cell camera overrides, keyed by cell index. Updated in place so an
+    // assignment only rebinds the target cell instead of tearing down every
+    // delegate (which would stop and restart every running stream and race
+    // deferred detach() against the new attach()).
+    property var cameraAssignments: ({})
+
     function applyLayout(json) {
         // Accept either a parsed object or a JSON string from the REST layer.
+        cameraAssignments = ({})
         layoutJson = (typeof json === "string") ? JSON.parse(json) : json
         focusedCell = 0
     }
@@ -42,9 +49,11 @@ Rectangle {
     function assignCameraToFocusedCell(cameraUuid) {
         if (focusedCell < 0 || focusedCell >= repeater.count)
             return
-        var cells = layoutJson.cells
-        cells[focusedCell].camera_uuid = cameraUuid
-        layoutJson = { grid: layoutJson.grid, cells: cells }  // trigger rebind
+        var next = {}
+        for (var k in cameraAssignments)
+            next[k] = cameraAssignments[k]
+        next[focusedCell] = cameraUuid
+        cameraAssignments = next  // property change → only bindings re-evaluate
         cellCameraChanged(focusedCell, cameraUuid)
     }
 
@@ -81,8 +90,14 @@ Rectangle {
             border.width: engine.focusedCell === index ? 2 : 1
             border.color: engine.focusedCell === index ? "#2f81f7" : "#232a33"
 
-            readonly property string cameraUuid:
-                modelData.camera_uuid ? modelData.camera_uuid : ""
+            // Runtime assignment (drag/activation) wins over the persisted
+            // layout document.
+            readonly property string cameraUuid: {
+                var assigned = engine.cameraAssignments[cell.index]
+                if (assigned !== undefined && assigned !== null)
+                    return assigned
+                return modelData.camera_uuid ? modelData.camera_uuid : ""
+            }
 
             // Video surface: VideoCell handles decode -> QSGTexture upload on
             // the RHI scene graph. Loaded only when a camera is assigned.
@@ -92,12 +107,22 @@ Rectangle {
                 active: cell.cameraUuid.length > 0
                 source: "VideoCell.qml"
                 onLoaded: {
-                    item.cameraUuid = cell.cameraUuid
+                    // Order matters: cellIndex MUST be set before cameraUuid,
+                    // because onCameraUuidChanged triggers attachLive() which
+                    // keys the decoder session by cellIndex. Without this,
+                    // every cell attaches with the default index (-1) and all
+                    // cells share one decoder — assigning a second camera
+                    // steals the decoder and blanks the first cell.
+                    item.cellIndex = cell.index
                     // Adaptive profile: sub-stream for small tiles, mid/main
                     // when the merged cell is large enough to justify it.
-                    item.preferredProfile =
-                        (cell.width > engine.width / 2) ? "main"
-                        : (cell.width > engine.width / 4) ? "mid" : "sub"
+                    item.preferredProfile = Qt.binding(function() {
+                        return (cell.width > engine.width / 2) ? "main"
+                             : (cell.width > engine.width / 4) ? "mid" : "sub"
+                    })
+                    item.cameraUuid = Qt.binding(function() {
+                        return cell.cameraUuid
+                    })
                 }
             }
 
