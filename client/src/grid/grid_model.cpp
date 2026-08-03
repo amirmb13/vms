@@ -39,11 +39,12 @@ QVariant GridModel::data(const QModelIndex& index, int role) const {
         return {};
     const SavedLayout& l = layouts_[static_cast<size_t>(index.row())];
     switch (role) {
-        case LayoutIdRole: return l.id;
+        case LayoutIdRole: return l.uuid;
         case NameFaRole: return l.nameFa;
         case IsSharedRole: return l.isShared;
-        case CellCountRole:
-            return l.layoutJson.value(QStringLiteral("cells")).toArray().size();
+        // Cached at parse time; re-parsing the cells array on every data()
+        // call made list painting O(cells) per delegate per frame.
+        case CellCountRole: return l.cellCount;
         default: return {};
     }
 }
@@ -56,10 +57,10 @@ QHash<int, QByteArray> GridModel::roleNames() const {
 }
 
 // --- Networking ----------------------------------------------------------------
-QNetworkReply* GridModel::authedRequest(const QString& path,
+QNetworkReply* GridModel::authedRequest(const QUrl& url,
                                         const QByteArray& verb,
                                         const QByteArray& body) {
-    QNetworkRequest req{QUrl(api_base_url_ + path)};
+    QNetworkRequest req{url};
     req.setHeader(QNetworkRequest::ContentTypeHeader,
                   QStringLiteral("application/json; charset=utf-8"));
     if (!auth_token_.isEmpty())
@@ -71,7 +72,12 @@ QNetworkReply* GridModel::authedRequest(const QString& path,
 }
 
 void GridModel::reload() {
-    QNetworkReply* reply = authedRequest(QStringLiteral("/api/layouts/"), "GET");
+    incoming_.clear();
+    requestLayoutsPage(QUrl(api_base_url_ + QStringLiteral("/api/layouts/")));
+}
+
+void GridModel::requestLayoutsPage(const QUrl& url) {
+    QNetworkReply* reply = authedRequest(url, "GET");
     connect(reply, &QNetworkReply::finished, this,
             [this, reply] { onLayoutsReply(reply); });
 }
@@ -82,25 +88,42 @@ void GridModel::onLayoutsReply(QNetworkReply* reply) {
     emit loadingChanged();
 
     if (reply->error() != QNetworkReply::NoError) {
+        incoming_.clear();
         setErrorFa(QStringLiteral("خطا در دریافت چیدمان‌ها از سرور مدیریت"));
         return;
     }
     const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+    const QJsonObject page = doc.object();
     const QJsonArray results =
         doc.isArray() ? doc.array()
-                      : doc.object().value(QStringLiteral("results")).toArray();
+                      : page.value(QStringLiteral("results")).toArray();
 
-    beginResetModel();
-    layouts_.clear();
+    // Field names mirror GridLayoutSerializer exactly: uuid / name_fa /
+    // is_shared / layout_json (the pre-fix "id"/"name" pair silently produced
+    // empty catalogue rows and rejected saves).
     for (const QJsonValue& v : results) {
         const QJsonObject o = v.toObject();
         SavedLayout l;
-        l.id = o.value(QStringLiteral("id")).toInt(-1);
-        l.nameFa = o.value(QStringLiteral("name")).toString();
+        l.uuid = o.value(QStringLiteral("uuid")).toString();
+        l.nameFa = o.value(QStringLiteral("name_fa")).toString();
         l.isShared = o.value(QStringLiteral("is_shared")).toBool();
         l.layoutJson = o.value(QStringLiteral("layout_json")).toObject();
-        layouts_.push_back(std::move(l));
+        l.cellCount =
+            l.layoutJson.value(QStringLiteral("cells")).toArray().size();
+        incoming_.push_back(std::move(l));
     }
+
+    // DRF pagination: follow `next` until exhausted, then swap the model in
+    // ONE reset (page-by-page resets would repaint the catalogue N times).
+    const QJsonValue next = page.value(QStringLiteral("next"));
+    if (next.isString() && !next.toString().isEmpty()) {
+        requestLayoutsPage(QUrl(next.toString()));
+        return;
+    }
+
+    beginResetModel();
+    layouts_ = std::move(incoming_);
+    incoming_.clear();
     endResetModel();
     setErrorFa({});
 }
@@ -123,8 +146,10 @@ void GridModel::applyLayoutAt(int row) {
 }
 
 void GridModel::applyPresetGrid(int cols, int rows) {
-    cols = qBound(1, cols, 8);
-    rows = qBound(1, rows, 8);
+    // Match the server-side schema bound (16x16) — enterprise video walls
+    // legitimately run much denser than the old 8x8 client cap.
+    cols = qBound(1, cols, kMaxGridDim);
+    rows = qBound(1, rows, kMaxGridDim);
     QJsonArray cells;
     for (int y = 0; y < rows; ++y)
         for (int x = 0; x < cols; ++x) cells.append(makeCell(x, y));
@@ -177,12 +202,13 @@ void GridModel::mergeCells(int cellIndex, int spanW, int spanH) {
 }
 
 void GridModel::saveActiveLayout(const QString& nameFa, bool shared) {
-    const QJsonObject payload{{QStringLiteral("name"), nameFa},
+    // Payload matches GridLayoutSerializer writable fields.
+    const QJsonObject payload{{QStringLiteral("name_fa"), nameFa},
                               {QStringLiteral("is_shared"), shared},
                               {QStringLiteral("layout_json"), active_}};
-    QNetworkReply* reply =
-        authedRequest(QStringLiteral("/api/layouts/"), "POST",
-                      QJsonDocument(payload).toJson(QJsonDocument::Compact));
+    QNetworkReply* reply = authedRequest(
+        QUrl(api_base_url_ + QStringLiteral("/api/layouts/")), "POST",
+        QJsonDocument(payload).toJson(QJsonDocument::Compact));
     connect(reply, &QNetworkReply::finished, this, [this, reply] {
         reply->deleteLater();
         --pending_;

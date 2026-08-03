@@ -8,6 +8,13 @@
 // AVPackets. Video walls flip `multicast` so the packet leaves the NIC once
 // (IGMP) instead of 50 unicast copies.
 //
+// Scale notes (10k cameras):
+//   * on_packet() is called from EVERY ingest reader thread for EVERY packet
+//     (~hundreds of thousands of calls/sec fleet-wide). It therefore takes
+//     only a shared lock on 1-of-64 shards and buffers only WATCHED streams.
+//   * Ring memory is bounded by (concurrently watched streams x capacity),
+//     not by the total camera count.
+//
 // Adaptive streaming: switch_profile_iframe_aligned() arms a pending profile
 // and only flips the cursor at the target ring's newest keyframe — the
 // decoder starts on an IDR frame, so 360p -> 4K transitions are seamless
@@ -30,32 +37,81 @@ inline std::string stream_key(const std::string& camera_uuid,
 
 }  // namespace
 
-size_t MediaRelayEngine::StreamKeyHash::operator()(
-    const std::string& k) const {
-    return std::hash<std::string>{}(k);
-}
-
 MediaRelayEngine::MediaRelayEngine(NtpClock& clock) : clock_(clock) {}
+
+MediaRelayEngine::Shard& MediaRelayEngine::shard_for(const std::string& key) {
+    return shards_[std::hash<std::string>{}(key) % kShardCount];
+}
 
 // ---------------------------------------------------------------------------
 // Ingest side — called from every reader thread, must stay near-lock-free.
 // ---------------------------------------------------------------------------
 void MediaRelayEngine::on_packet(const TimedPacket& packet) {
     const std::string key = stream_key(packet.camera_uuid, packet.profile);
+    Shard& shard = shard_for(key);
 
-    PacketRingBuffer* ring = nullptr;
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        auto it = rings_.find(key);
-        if (it == rings_.end()) {
-            it = rings_.emplace(key, std::make_unique<PacketRingBuffer>())
-                     .first;
-        }
-        ring = it->second.get();
+    // SHARED lock only: ingest threads for different streams in the same
+    // shard proceed in parallel; exclusive locks are taken solely by the
+    // rare open/close/reap paths. The lock is held across push() so a
+    // concurrent reap can never free the ring out from under us.
+    std::shared_lock<std::shared_mutex> lock(shard.mutex);
+    auto it = shard.rings.find(key);
+    if (it == shard.rings.end()) {
+        // Nobody has ever watched this stream — drop. The archiver and the
+        // motion engine are independent sinks and still get every packet.
+        return;
     }
-    // push() itself is lock-free single-producer; the map lock above is only
-    // hit on the hash lookup and is uncontended in steady state.
-    ring->push(packet);
+    const RingEntry& entry = it->second;
+    if (entry.subscribers == 0 &&
+        clock_.now_utc_us() > entry.linger_until_us) {
+        return;  // linger expired — stop buffering until the reap frees it
+    }
+    entry.ring->push(packet);
+}
+
+// ---------------------------------------------------------------------------
+// Ring registry bookkeeping (exclusive-lock paths, low traffic).
+// ---------------------------------------------------------------------------
+PacketRingBuffer* MediaRelayEngine::acquire_ring(const std::string& key) {
+    Shard& shard = shard_for(key);
+    std::unique_lock<std::shared_mutex> lock(shard.mutex);
+    auto it = shard.rings.find(key);
+    if (it == shard.rings.end()) {
+        RingEntry entry;
+        entry.ring = std::make_unique<PacketRingBuffer>();
+        it = shard.rings.emplace(key, std::move(entry)).first;
+    }
+    ++it->second.subscribers;
+    return it->second.ring.get();
+}
+
+void MediaRelayEngine::release_ring(const std::string& key) {
+    Shard& shard = shard_for(key);
+    std::unique_lock<std::shared_mutex> lock(shard.mutex);
+    auto it = shard.rings.find(key);
+    if (it == shard.rings.end()) return;
+    RingEntry& entry = it->second;
+    if (entry.subscribers > 0) --entry.subscribers;
+    if (entry.subscribers == 0) {
+        // Keep the ring warm for the linger window, then reap_idle_rings()
+        // frees the retained packet refs.
+        entry.linger_until_us = clock_.now_utc_us() + kRingLingerUs;
+    }
+}
+
+void MediaRelayEngine::reap_idle_rings() {
+    const uint64_t now_us = clock_.now_utc_us();
+    for (Shard& shard : shards_) {
+        std::unique_lock<std::shared_mutex> lock(shard.mutex);
+        for (auto it = shard.rings.begin(); it != shard.rings.end();) {
+            const RingEntry& entry = it->second;
+            if (entry.subscribers == 0 && now_us > entry.linger_until_us) {
+                it = shard.rings.erase(it);  // ~PacketRingBuffer frees refs
+            } else {
+                ++it;
+            }
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -65,68 +121,95 @@ void MediaRelayEngine::on_packet(const TimedPacket& packet) {
 RelaySession MediaRelayEngine::open_live(const std::string& camera_uuid,
                                          StreamProfile profile,
                                          bool prefer_multicast) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    // Register interest FIRST so on_packet starts buffering this stream.
+    // Join at the newest I-frame so the client's decoder starts instantly on
+    // an IDR (cold rings deliver within one GOP of the first push).
+    PacketRingBuffer* ring = acquire_ring(stream_key(camera_uuid, profile));
 
     RelaySession session;
-    session.session_id =
-        camera_uuid + "#" + std::to_string(next_session_seq_++) + "@" +
-        std::to_string(clock_.now_utc_us());
     session.camera_uuid = camera_uuid;
     session.active_profile = profile;
     session.pending_profile = profile;
     session.multicast = prefer_multicast;
+    session.cursor = ring->last_iframe_seq();
 
-    // Join at the newest I-frame so the client's decoder starts instantly on
-    // an IDR instead of waiting (up to a GOP) for the next keyframe.
-    const std::string key = stream_key(camera_uuid, profile);
-    auto it = rings_.find(key);
-    if (it == rings_.end()) {
-        it = rings_.emplace(key, std::make_unique<PacketRingBuffer>()).first;
+    {
+        std::lock_guard<std::mutex> lock(session_mutex_);
+        session.session_id =
+            camera_uuid + "#" + std::to_string(next_session_seq_++) + "@" +
+            std::to_string(clock_.now_utc_us());
+        sessions_[session.session_id] = session;
     }
-    session.cursor = it->second->last_iframe_seq();
-
-    sessions_[session.session_id] = session;
     return session;
 }
 
 void MediaRelayEngine::switch_profile_iframe_aligned(RelaySession& s,
                                                      StreamProfile target) {
-    if (target == s.active_profile) return;
+    if (target == s.active_profile && target == s.pending_profile) return;
 
-    std::lock_guard<std::mutex> lock(mutex_);
-
-    // Arm the switch. The relay pump keeps serving the OLD profile until the
-    // TARGET ring exposes a keyframe at/after this instant — then flips the
-    // cursor to that exact sequence. H.264/H.265 decoders resume cleanly on
-    // the IDR: no black screen, no flicker, no reference-frame corruption.
-    s.pending_profile = target;
-
-    const std::string key = stream_key(s.camera_uuid, target);
-    auto it = rings_.find(key);
-    if (it == rings_.end()) {
-        // Mid-stream is opened on demand: first 4-camera-grid subscriber
-        // triggers ingest of the 720p/1080p profile.
-        it = rings_.emplace(key, std::make_unique<PacketRingBuffer>()).first;
-    }
-
-    const uint64_t iframe_seq = it->second->last_iframe_seq();
-    if (iframe_seq > 0) {
-        s.cursor = iframe_seq;              // land exactly on the keyframe
-        s.active_profile = target;          // switch is complete
+    // Arm the switch: subscribing to the target ring makes on_packet start
+    // buffering it (mid-profile ingest is opened on demand — the first
+    // 4-camera-grid subscriber triggers the 720p/1080p profile).
+    const std::string target_key = stream_key(s.camera_uuid, target);
+    PacketRingBuffer* target_ring = nullptr;
+    if (target != s.pending_profile) {
+        target_ring = acquire_ring(target_key);
+        // Drop the previously armed-but-incomplete pending profile, if any.
+        if (s.pending_profile != s.active_profile) {
+            release_ring(stream_key(s.camera_uuid, s.pending_profile));
+        }
         s.pending_profile = target;
+    } else {
+        Shard& shard = shard_for(target_key);
+        std::shared_lock<std::shared_mutex> lock(shard.mutex);
+        auto it = shard.rings.find(target_key);
+        if (it != shard.rings.end()) target_ring = it->second.ring.get();
     }
-    // else: target ring has no keyframe yet — pending_profile stays armed and
-    // the pump re-checks on every packet until the first IDR arrives.
 
+    // The relay pump keeps serving the OLD profile until the TARGET ring
+    // exposes a keyframe — then flips the cursor to that exact sequence.
+    // H.264/H.265 decoders resume cleanly on the IDR: no black screen, no
+    // flicker, no reference-frame corruption.
+    if (target_ring != nullptr) {
+        const uint64_t iframe_seq = target_ring->last_iframe_seq();
+        if (iframe_seq > 0) {
+            const StreamProfile old_profile = s.active_profile;
+            s.cursor = iframe_seq;      // land exactly on the keyframe
+            s.active_profile = target;  // switch is complete
+            s.pending_profile = target;
+            if (old_profile != target) {
+                release_ring(stream_key(s.camera_uuid, old_profile));
+            }
+        }
+        // else: target ring has no keyframe yet — pending_profile stays armed
+        // and the pump re-checks on every packet until the first IDR arrives.
+    }
+
+    std::lock_guard<std::mutex> lock(session_mutex_);
     auto stored = sessions_.find(s.session_id);
     if (stored != sessions_.end()) stored->second = s;
 }
 
 void MediaRelayEngine::close(const std::string& session_id) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    sessions_.erase(session_id);
-    // Ring buffers intentionally outlive sessions: the next subscriber for
-    // the same camera reuses the warm ring (and the archiver never stops).
+    RelaySession session;
+    {
+        std::lock_guard<std::mutex> lock(session_mutex_);
+        auto it = sessions_.find(session_id);
+        if (it == sessions_.end()) return;
+        session = it->second;
+        sessions_.erase(it);
+    }
+
+    // Release every ring this session subscribed to (active + a possibly
+    // still-armed pending profile). Rings outlive sessions by the linger
+    // window so the next subscriber for the same camera reuses a warm ring.
+    release_ring(stream_key(session.camera_uuid, session.active_profile));
+    if (session.pending_profile != session.active_profile) {
+        release_ring(stream_key(session.camera_uuid, session.pending_profile));
+    }
+
+    // Opportunistic housekeeping — bounded by shard count, not camera count.
+    reap_idle_rings();
 }
 
 }  // namespace vms

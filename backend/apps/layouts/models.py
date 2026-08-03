@@ -61,6 +61,16 @@ class GridLayout(models.Model):
     class Meta:
         verbose_name = _("چیدمان نمایش")
         verbose_name_plural = _("چیدمان‌های نمایش")
+        # Stable ordering is mandatory for consistent DRF pagination
+        # (the Qt GridModel follows `next` links page-by-page).
+        ordering = ["-updated_at", "id"]
+        indexes = [
+            # Backs the catalogue query `owner = me OR is_shared = true`
+            # without a sequential scan once thousands of layouts exist.
+            models.Index(fields=["is_shared"], name="layout_shared_idx"),
+            models.Index(fields=["owner", "-updated_at"],
+                         name="layout_owner_updated_idx"),
+        ]
 
     def __str__(self) -> str:
         return self.name_fa
