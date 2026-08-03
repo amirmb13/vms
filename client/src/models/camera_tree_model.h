@@ -38,6 +38,11 @@ struct CameraTreeNode {
     CameraTreeNode* parent = nullptr;
     std::vector<std::unique_ptr<CameraTreeNode>> children;
 
+    // Cached position within parent->children, assigned at build time.
+    // A linear scan here is O(n) per call; with a 10k-camera group the
+    // TreeView's parent() lookups would degrade to O(n^2).
+    int rowInParent = 0;
+
     int row() const;
 };
 
