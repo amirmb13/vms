@@ -87,10 +87,13 @@ void SyncPlayback::tick() {
     }
     emit positionChanged();
 
-    // Hard re-sync every 5s keeps all engines within one GOP of the master.
+    // Drift-aware re-sync (every 1s): only engines that drifted beyond
+    // 750ms get a corrective seek. The previous blind broadcastSeek forced
+    // av_seek_frame + buffer flush on EVERY playback engine every 5s, which
+    // made the whole wall stutter in lockstep even when perfectly in sync.
     static int ticks = 0;
-    if (++ticks % 50 == 0 && controller_)
-        controller_->broadcastSeek(position_us_);
+    if (++ticks % 10 == 0 && controller_)
+        controller_->resyncDrifted(position_us_, 750'000);
 }
 
 }  // namespace vms

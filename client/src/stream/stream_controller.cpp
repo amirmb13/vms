@@ -1,5 +1,6 @@
 #include "stream/stream_controller.h"
 #include "stream/video_decoder.h"
+#include <QDateTime>
 #include <QVideoSink>
 
 namespace vms {
@@ -58,9 +59,28 @@ std::shared_ptr<VideoDecoder> StreamController::getOrCreateDecoder(int cellIndex
     session.decoder = std::make_shared<VideoDecoder>();
 
     VideoDecoder* decPtr = session.decoder.get();
+    // Per-frame timestamps are recorded for drift detection, but the QML-facing
+    // signal is throttled to ~4Hz. Un-throttled it fires (cells × fps) queued
+    // signals per second, and every VideoCell's Connections handler runs for
+    // every one of them — O(cells²) JS invocations that saturate the GUI
+    // thread on a large wall. The timestamp overlay only shows seconds anyway.
     connect(decPtr, &VideoDecoder::framePresented, this,
             [this, cellIndex](quint64 utcUs) {
-                emit cellFramePresented(cellIndex, utcUs);
+                bool forward = false;
+                {
+                    std::lock_guard<std::mutex> lock(session_mutex_);
+                    auto it = sessions_.find(cellIndex);
+                    if (it != sessions_.end()) {
+                        CellSession& s = it->second;
+                        s.lastPresentedUs = utcUs;
+                        const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+                        if (nowMs - s.lastEmitMs >= 250) {
+                            s.lastEmitMs = nowMs;
+                            forward = true;
+                        }
+                    }
+                }
+                if (forward) emit cellFramePresented(cellIndex, utcUs);
             });
     connect(decPtr, &VideoDecoder::statusFaChanged, this, [this, cellIndex, decPtr] {
         emit cellStatusChanged(cellIndex, decPtr->statusFa());
@@ -146,8 +166,26 @@ void StreamController::detachAll() {
         }
         sessions_.clear();
     }
+    // Two-phase shutdown: signal EVERY worker first (the AVIO interrupt
+    // callback aborts any blocking open/read immediately), THEN join. A
+    // serial stop-and-join pays each decoder's shutdown latency back-to-back
+    // on the GUI thread — on a full wall that froze the UI for seconds.
+    for (auto& dec : decodersToStop) {
+        dec->requestStop();
+    }
     for (auto& dec : decodersToStop) {
         dec->stop();
+    }
+}
+
+void StreamController::resyncDrifted(quint64 masterUs, quint64 toleranceUs) {
+    std::lock_guard<std::mutex> lock(session_mutex_);
+    for (auto& [idx, s] : sessions_) {
+        if (!s.playbackMode || !s.decoder) continue;
+        const quint64 last = s.lastPresentedUs;
+        if (last == 0) continue;  // no frame yet — initial seek is in flight
+        const quint64 drift = last > masterUs ? last - masterUs : masterUs - last;
+        if (drift > toleranceUs) s.decoder->seekTo(masterUs);
     }
 }
 

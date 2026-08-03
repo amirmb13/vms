@@ -5,6 +5,7 @@
 #include <QString>
 #include <QVideoSink>
 #include <atomic>
+#include <memory>
 #include <mutex>
 #include <thread>
 
@@ -35,6 +36,13 @@ public:
     Q_INVOKABLE void setRate(double rate);
     Q_INVOKABLE void stop();
 
+    // Non-blocking stop request: flips running_ so the AVIO interrupt
+    // callback aborts any blocking open/read immediately. Lets
+    // StreamController::detachAll() signal EVERY worker first and only then
+    // join them, so a full-wall layout switch pays one shutdown latency
+    // instead of (cells × latency) serially on the GUI thread.
+    void requestStop();
+
     QString statusFa() const { return status_fa_; }
 
 signals:
@@ -46,7 +54,9 @@ signals:
 private:
     bool openInput(const QString& url, AVFormatContext*& fmt,
                    AVCodecContext*& codec, int& videoStream);
-    bool initHardwareDecoder(AVCodecContext* codec);
+    bool initHardwareDecoder(AVCodecContext* codec, const AVCodec* dec);
+    static AVPixelFormat getHwFormat(AVCodecContext* ctx,
+                                     const AVPixelFormat* formats);
     void presentFrame(AVFrame* frame, quint64 utcUs);
     void decodeLoop(QString url, bool playbackMode);
     void setStatusFa(const QString& s);
@@ -64,7 +74,14 @@ private:
     QString status_fa_;
 
     SwsContext* sws_{nullptr};
-    AVBufferRef* hw_device_ctx_{nullptr};
+
+    // Negotiated hardware surface format (AV_PIX_FMT_NONE = software decode).
+    AVPixelFormat hw_pix_fmt_{AV_PIX_FMT_NONE};
+
+    // Frames queued to the GUI thread but not yet consumed. shared_ptr so the
+    // queued lambda can decrement safely even if this decoder is destroyed
+    // before the GUI thread drains its queue.
+    std::shared_ptr<std::atomic<int>> frames_in_flight_;
 };
 
 }  // namespace vms
