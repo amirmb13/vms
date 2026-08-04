@@ -310,7 +310,21 @@ std::shared_ptr<CameraTreeNode> CameraTreeModel::buildTree(QJsonArray groups,
 
     for (const QJsonValue& value : cameras) {
         const QJsonObject obj = value.toObject();
-        const int group_id = obj.value("group").toInt(-1);
+        // Robust group-id extraction: DRF serializers may emit the FK as an
+        // int PK, a numeric string, or a nested object. A silent mismatch
+        // here detaches every camera from its group, which empties the
+        // groups and makes their expand arrows disappear after a fetch.
+        int group_id = -1;
+        const QJsonValue gv = obj.value("group");
+        if (gv.isDouble()) {
+            group_id = gv.toInt(-1);
+        } else if (gv.isString()) {
+            bool ok = false;
+            const int parsed = gv.toString().toInt(&ok);
+            group_id = ok ? parsed : -1;
+        } else if (gv.isObject()) {
+            group_id = gv.toObject().value("id").toInt(-1);
+        }
         const auto it = group_index.find(group_id);
         CameraTreeNode* parent =
             (it != group_index.end()) ? it->second : new_root.get();
