@@ -147,6 +147,15 @@ body {
   color: var(--body-fg);
 }
 
+/* Buttons do not inherit the document font by default — without this,
+   Farsi labels inside <button> elements render with a fallback font. */
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-family-primary);
+}
+
 a:link,
 a:visited {
   transition: color 120ms ease;
@@ -583,9 +592,10 @@ p.help {
   line-height: normal;
 }
 
-/* Selector (filter_horizontal) — fully restyled: the stock widget renders
-   unreadable colored headers and fixed pixel widths that break in RTL/narrow
-   layouts. Rebuild it as two flexible cards with themed headers. */
+/* Selector (filter_horizontal) — fully restyled for the Django 5.2 markup:
+   `.selector-available-title` / `.selector-chosen-title` headers (label +
+   p.helptext), text-labelled chooser <button>s, and chooseall/clearall
+   footer buttons. Rebuilt as two flexible cards, fully RTL-aware. */
 .selector {
   display: flex;
   align-items: stretch;
@@ -608,32 +618,42 @@ p.help {
   background: var(--vms-surface);
 }
 
-.selector .selector-available h2,
-.selector .selector-chosen h2 {
-  border-radius: 0;
+/* Pane headers */
+.selector .selector-available-title,
+.selector .selector-chosen-title {
   margin: 0;
   padding: 10px 12px;
   font-size: 0.75rem;
   font-weight: 700;
-  text-transform: none;
-  letter-spacing: 0;
   border-bottom: 1px solid var(--border-color);
 }
 
-.selector .selector-available h2 {
+.selector .selector-available-title {
   background: var(--darkened-bg);
   color: var(--body-quiet-color);
 }
 
-.selector .selector-chosen h2 {
+.selector .selector-chosen-title {
   background: var(--vms-primary-soft);
   color: var(--vms-primary-strong);
 }
 
-/* Hide the verbose (often untranslated) helper sentence inside the headers */
-.selector .selector-available h2 .help,
-.selector .selector-chosen h2 .help,
-.selector p.help,
+.selector .selector-available-title label,
+.selector .selector-chosen-title label {
+  display: block;
+  float: none;
+  padding: 0;
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  width: auto;
+}
+
+/* Hide the verbose (partially untranslated) helper sentence in the headers */
+.selector .selector-available-title .helptext,
+.selector .selector-chosen-title .helptext,
+.selector p.helptext,
 .selector .help-tooltip {
   display: none;
 }
@@ -641,7 +661,15 @@ p.help {
 .selector .selector-filter {
   border-bottom: 1px solid var(--hairline-color);
   padding: 8px 10px;
+  margin: 0;
   background: var(--vms-surface);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.selector .selector-filter label {
+  display: none;
 }
 
 .selector .selector-filter input {
@@ -672,6 +700,7 @@ p.help {
   color: var(--vms-primary-strong);
 }
 
+/* Middle chooser column: two round icon buttons */
 .selector ul.selector-chooser {
   display: flex;
   flex-direction: column;
@@ -684,44 +713,101 @@ p.help {
   margin: 0 2px;
   width: auto;
   float: none;
+  list-style: none;
 }
 
 .selector ul.selector-chooser li {
   margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.selector .selector-add,
-.selector .selector-remove {
+.selector button.selector-add,
+.selector button.selector-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 50%;
-  background-color: var(--darkened-bg);
+  background: var(--darkened-bg) none;
   border: 1px solid var(--border-color);
-  width: 32px;
-  height: 32px;
-  transition: background 120ms ease, border-color 120ms ease;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  color: var(--body-quiet-color);
+  /* Hide the long text label; an arrow glyph is drawn via ::before.
+     Django's base CSS hides the label with text-indent: -3000px which
+     would also push our pseudo-element off-screen — reset it. */
+  font-size: 0;
+  line-height: 0;
+  text-indent: 0;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
-.selector .selector-add:hover,
-.selector .selector-remove:hover {
+.selector button.selector-add::before,
+.selector button.selector-remove::before {
+  font-size: 1rem;
+  line-height: 1;
+  font-family: var(--font-family-primary);
+}
+
+/* RTL: available pane sits at inline-start (right), chosen at inline-end
+   (left) — "add" moves left, "remove" moves right. */
+.selector button.selector-add::before {
+  content: "\2190"; /* ← */
+}
+
+.selector button.selector-remove::before {
+  content: "\2192"; /* → */
+}
+
+.selector button.selector-add:hover:not(:disabled),
+.selector button.selector-remove:hover:not(:disabled) {
   background-color: var(--vms-primary-soft);
   border-color: var(--vms-primary);
+  color: var(--vms-primary);
 }
 
-.selector .selector-clearall,
-.selector .selector-chooseall {
+.selector button.selector-add:disabled,
+.selector button.selector-remove:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Footer "choose all / remove all" buttons */
+.selector button.selector-chooseall,
+.selector button.selector-clearall {
   margin: 0;
-  padding: 8px 12px;
+  padding: 9px 12px;
+  /* Django's base CSS pins a fixed height on these — let content size them */
+  height: auto;
+  box-sizing: border-box;
+  text-indent: 0;
+  line-height: 1.4;
   font-size: 0.71875rem;
   font-weight: 600;
+  font-family: var(--font-family-primary);
   color: var(--body-quiet-color);
+  border: none;
   border-top: 1px solid var(--hairline-color);
-  background: var(--vms-surface);
+  background: var(--vms-surface) none;
   text-align: center;
-  width: auto;
+  width: 100%;
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease;
 }
 
-.selector .selector-clearall:hover,
-.selector .selector-chooseall:hover {
+.selector button.selector-chooseall:hover:not(:disabled),
+.selector button.selector-clearall:hover:not(:disabled) {
   color: var(--vms-primary);
+  background: var(--darkened-bg);
+}
+
+.selector button.selector-chooseall:disabled,
+.selector button.selector-clearall:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* Stack the two panes vertically on narrow screens */
@@ -732,8 +818,15 @@ p.help {
 
   .selector ul.selector-chooser {
     flex-direction: row;
-    transform: rotate(90deg);
     margin: 0 auto;
+  }
+
+  .selector button.selector-add::before {
+    content: "\2193"; /* ↓ */
+  }
+
+  .selector button.selector-remove::before {
+    content: "\2191"; /* ↑ */
   }
 
   .selector select.filtered {
