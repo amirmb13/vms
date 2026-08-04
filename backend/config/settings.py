@@ -173,6 +173,11 @@ STORAGES = {
         "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
 }
+# In DEBUG, serve static files straight from app/finder locations so the
+# admin works without running `collectstatic` first. In production WhiteNoise
+# serves only from STATIC_ROOT (collectstatic output), which is correct.
+WHITENOISE_USE_FINDERS = DEBUG
+WHITENOISE_AUTOREFRESH = DEBUG
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
