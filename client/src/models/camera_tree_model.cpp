@@ -207,8 +207,15 @@ void CameraTreeModel::reload() {
 void CameraTreeModel::onGroupsReply(QNetworkReply* reply) {
     reply->deleteLater();
     if (reply->error() == QNetworkReply::NoError) {
-        groups_data_ = extractArray(reply->readAll());
-        fetch_got_data_ = true;
+        const QJsonArray fetched = extractArray(reply->readAll());
+        // Commit only NON-EMPTY payloads. A fresh/empty dev server on
+        // 127.0.0.1:8000 answers 200 with zero groups a few seconds after
+        // startup; committing that wiped the visible tree, detached every
+        // camera from its group and made group expand-arrows fade out.
+        if (!fetched.isEmpty()) {
+            groups_data_ = fetched;
+            fetch_got_data_ = true;
+        }
     } else {
         // Keep the existing groups — never degrade the visible tree because
         // the server was unreachable.
@@ -265,12 +272,16 @@ void CameraTreeModel::onCamerasReply(QNetworkReply* reply) {
     if (more_pages) return;
 
     if (ok) {
-        // Commit the accumulated pages only on success. On error the old
-        // cameras_data_ (mock or last good fetch) is preserved — overwriting
-        // it with the empty accumulator stripped every camera out of the
-        // tree and made group expand-arrows disappear.
-        cameras_data_ = cameras_accumulating_;
-        fetch_got_data_ = true;
+        // Commit the accumulated pages only on success AND only when the
+        // server actually returned cameras. On error — or on a 200 with an
+        // empty list (fresh dev database) — the old cameras_data_ (mock or
+        // last good fetch) is preserved; overwriting it with an empty
+        // accumulator stripped every camera out of the tree and made group
+        // expand-arrows disappear a few seconds after startup.
+        if (!cameras_accumulating_.isEmpty()) {
+            cameras_data_ = cameras_accumulating_;
+            fetch_got_data_ = true;
+        }
     } else {
         fetch_had_error_ = true;
     }

@@ -27,16 +27,31 @@ Rectangle {
         // ---- Panel header -------------------------------------------------
         Item {
             width: parent.width
-            height: 46
+            height: 48
 
-            Label {
+            Row {
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.right: parent.right
                 anchors.rightMargin: 14
-                text: "دوربین‌ها"
-                font.pixelSize: 13
-                font.bold: true
-                color: Theme.text
+                spacing: 8
+                layoutDirection: Qt.RightToLeft
+
+                Label {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "دوربین‌ها"
+                    font.pixelSize: Theme.fontMd
+                    font.bold: true
+                    color: Theme.text
+                }
+
+                // Tiny live dot — quiet signal that the directory is active.
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 6; height: 6; radius: 3
+                    color: cameraTreeModel.loading ? Theme.accent : Theme.success
+
+                    Behavior on color { ColorAnimation { duration: Theme.durMed } }
+                }
             }
 
             // Refresh — custom-drawn so it can never fall back to a light
@@ -51,7 +66,7 @@ Rectangle {
                 color: refreshTap.pressed ? Theme.surface3
                      : refreshHover.hovered ? Theme.surface2 : "transparent"
 
-                Behavior on color { ColorAnimation { duration: 90 } }
+                Behavior on color { ColorAnimation { duration: Theme.durFast } }
 
                 Text {
                     id: refreshGlyph
@@ -89,9 +104,11 @@ Rectangle {
         TreeView {
             id: treeView
             width: parent.width
-            height: parent.height - 46
+            height: parent.height - 48
             clip: true
             model: cameraTreeModel
+            topMargin: 6
+            bottomMargin: 6
 
             // Delegate pooling is disabled on purpose: the directory model is
             // swapped wholesale (beginResetModel/endResetModel) when a server
@@ -143,14 +160,26 @@ Rectangle {
                     anchors.rightMargin: 6
                     radius: Theme.radiusSm
                     color: hover.hovered ? Theme.surface2 : "transparent"
-                    Behavior on color { ColorAnimation { duration: 80 } }
+                    Behavior on color { ColorAnimation { duration: Theme.durFast } }
                 }
                 HoverHandler { id: hover }
 
+                // Depth guide — a faint vertical hairline per nesting level so
+                // sub-groups read as nested without heavy indentation.
+                Rectangle {
+                    visible: cell.depth > 0
+                    anchors.right: parent.right
+                    anchors.rightMargin: 18
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: 1
+                    color: Theme.borderSoft
+                }
+
                 // Expand/collapse arrow — right-anchored, shown for EVERY
-                // group row (not gated on hasChildren) so it can never blink
-                // out when the model is rebuilt after a server fetch; a group
-                // that is momentarily childless just dims it. ▾ expanded,
+                // group row at FULL opacity, never gated or dimmed on
+                // hasChildren: a directory refresh that momentarily rebuilds
+                // the model must not make the arrow fade out. ▾ expanded,
                 // ◂ (pointing left = RTL "closed") collapsed. The glyph swaps
                 // with no rotation animation — animated rotation caused
                 // spurious spins when TreeView recycled delegates. The arrow
@@ -160,13 +189,15 @@ Rectangle {
                 Text {
                     id: arrow
                     visible: !cell.isCamera
-                    opacity: cell.hasChildren ? 1 : 0.35
                     anchors.right: parent.right
-                    anchors.rightMargin: 12 + cell.depth * 16
+                    anchors.rightMargin: 13 + cell.depth * 16
                     anchors.verticalCenter: parent.verticalCenter
                     text: cell.expanded ? "\u25be" : "\u25c2"   // ▾ / ◂
-                    color: cell.expanded ? Theme.textDim : Theme.textMute
+                    color: hover.hovered ? Theme.text
+                         : cell.expanded ? Theme.textDim : Theme.textMute
                     font.pixelSize: 13
+
+                    Behavior on color { ColorAnimation { duration: Theme.durFast } }
                 }
 
                 Row {
@@ -180,13 +211,25 @@ Rectangle {
                     anchors.leftMargin: 12
                     anchors.verticalCenter: parent.verticalCenter
 
-                    // Recording status dot for camera leaves
-                    Rectangle {
+                    // Recording status dot for camera leaves — soft halo ring
+                    // makes "recording" readable at a glance without shouting.
+                    Item {
                         visible: cell.isCamera
-                        width: 7; height: 7; radius: 3.5
+                        width: 12; height: 12
                         anchors.verticalCenter: parent.verticalCenter
-                        color: cell.recordingEnabled ? Theme.success
-                                                     : Theme.textMute
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 6
+                            color: cell.recordingEnabled
+                                   ? Qt.alpha(Theme.success, 0.18) : "transparent"
+                        }
+                        Rectangle {
+                            anchors.centerIn: parent
+                            width: 6; height: 6; radius: 3
+                            color: cell.recordingEnabled ? Theme.success
+                                                         : Theme.textMute
+                        }
                     }
 
                     Label {
@@ -196,28 +239,30 @@ Rectangle {
                         color: cell.isCamera
                                ? (hover.hovered ? Theme.text : Theme.textDim)
                                : Theme.text
-                        font.pixelSize: 13
+                        font.pixelSize: Theme.fontMd
                         font.bold: !cell.isCamera
                         elide: Text.ElideLeft
 
-                        Behavior on color { ColorAnimation { duration: 80 } }
+                        Behavior on color { ColorAnimation { duration: Theme.durFast } }
                     }
 
                     // Camera-count pill for group rows
                     Rectangle {
                         visible: !cell.isCamera
                         anchors.verticalCenter: parent.verticalCenter
-                        width: countLabel.implicitWidth + 12
+                        width: countLabel.implicitWidth + 14
                         height: 18
                         radius: 9
                         color: Theme.surface3
+                        border.width: 1
+                        border.color: Theme.borderSoft
 
                         Label {
                             id: countLabel
                             anchors.centerIn: parent
                             text: cell.cameraCount
                             color: Theme.textDim
-                            font.pixelSize: 11
+                            font.pixelSize: Theme.fontXs + 1
                         }
                     }
                 }
@@ -230,7 +275,7 @@ Rectangle {
                 // (open + instantly close again).
                 TapHandler {
                     onSingleTapped: {
-                        if (!cell.isCamera && cell.hasChildren)
+                        if (!cell.isCamera)
                             cell.treeView.toggleExpanded(cell.row)
                     }
                     onDoubleTapped: {
@@ -264,7 +309,7 @@ Rectangle {
             horizontalAlignment: Text.AlignHCenter
             text: cameraTreeModel.errorFa
             color: Theme.danger
-            font.pixelSize: 11
+            font.pixelSize: Theme.fontXs + 1
             elide: Text.ElideLeft
         }
     }
