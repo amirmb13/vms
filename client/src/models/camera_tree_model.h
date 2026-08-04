@@ -97,6 +97,7 @@ private:
     QNetworkReply* authedGetUrl(const QUrl& url);
     void onGroupsReply(QNetworkReply* reply);
     void onCamerasReply(QNetworkReply* reply);
+    void finishFetch();
     void requestNextCamerasPage(const QUrl& url);
     void scheduleRebuild();
     void setErrorFa(const QString& message);
@@ -120,6 +121,12 @@ private:
     // DRF-paginated /api/cameras/ pages accumulate here until `next` is null.
     QJsonArray cameras_accumulating_;
     int pending_replies_ = 0;
+    // Per-fetch outcome flags. A failed request must NOT clobber the data we
+    // already have (mock or previous fetch) — wiping cameras on error made
+    // group nodes lose their children, so their expand arrows vanished a few
+    // seconds after startup whenever the server was unreachable.
+    bool fetch_had_error_ = false;
+    bool fetch_got_data_ = false;
     // Builds never overlap: if fresh data lands while a build is running,
     // one follow-up build is queued and started when the current finishes.
     bool rebuild_queued_ = false;
