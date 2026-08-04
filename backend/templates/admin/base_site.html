@@ -14,6 +14,11 @@
 <link rel="stylesheet" href="{% static 'admin_custom/vms-theme.css' %}">
 {% endblock %}
 
+{% block extrahead %}
+{{ block.super }}
+<script src="{% static 'admin_custom/vms-theme.js' %}" defer></script>
+{% endblock %}
+
 {% block branding %}
 <div id="site-name">
   <a href="{% url 'admin:index' %}">سامانه مدیریت تصاویر نظارتی</a>
