@@ -1,0 +1,57 @@
+# =============================================================================
+# Development override — mounts the backend source into the containers so
+# code changes apply WITHOUT rebuilding the image.
+#
+# Usage (from the repo root):
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up -d
+#
+# What this changes vs. production compose:
+#   * backend/ is bind-mounted over /app  -> edit code on Windows, container
+#     sees it instantly.
+#   * django runs `runserver` (auto-reload) instead of gunicorn.
+#   * DJANGO_DEBUG=1 -> WhiteNoise serves admin static files directly from
+#     the installed packages (WHITENOISE_USE_FINDERS), so no collectstatic
+#     is needed during development.
+#   * gRPC stubs are regenerated on startup because the bind mount hides the
+#     `generated/` dir baked into the image.
+# =============================================================================
+services:
+  django:
+    environment:
+      DJANGO_DEBUG: "1"
+    volumes:
+      - ../backend:/app
+      - ../proto:/proto:ro
+    command: >
+      sh -c "mkdir -p generated &&
+             python -m grpc_tools.protoc -I /proto
+               --python_out=generated --grpc_python_out=generated
+               /proto/control_signals.proto /proto/ai_signaling.proto &&
+             python manage.py migrate --noinput &&
+             python manage.py runserver 0.0.0.0:8000"
+
+  django-grpc:
+    environment:
+      DJANGO_DEBUG: "1"
+    volumes:
+      - ../backend:/app
+      - ../proto:/proto:ro
+    command: >
+      sh -c "mkdir -p generated &&
+             python -m grpc_tools.protoc -I /proto
+               --python_out=generated --grpc_python_out=generated
+               /proto/control_signals.proto /proto/ai_signaling.proto &&
+             python manage.py run_control_grpc --port 50060"
+
+  django-health-poller:
+    environment:
+      DJANGO_DEBUG: "1"
+    volumes:
+      - ../backend:/app
+      - ../proto:/proto:ro
+    command: >
+      sh -c "mkdir -p generated &&
+             python -m grpc_tools.protoc -I /proto
+               --python_out=generated --grpc_python_out=generated
+               /proto/control_signals.proto /proto/ai_signaling.proto &&
+             python manage.py poll_server_health --interval 15"
