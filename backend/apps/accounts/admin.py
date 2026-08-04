@@ -12,8 +12,19 @@ from apps.common.shamsi import utc_to_shamsi
 from .models import FourEyesRequest, Role, RoleAssignment, User
 
 
+class RoleAssignmentInline(admin.TabularInline):
+    """Manage a user's VMS role assignments directly on the user page."""
+
+    model = RoleAssignment
+    extra = 0
+    autocomplete_fields = ("role", "camera_group")
+    verbose_name = _("انتساب نقش")
+    verbose_name_plural = _("نقش‌های سامانه نظارت")
+
+
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin):
+    inlines = (RoleAssignmentInline,)
     list_display = (
         "username",
         "full_name_fa",
@@ -37,6 +48,17 @@ class UserAdmin(DjangoUserAdmin):
     fieldsets = DjangoUserAdmin.fieldsets + (
         (_("اطلاعات سامانه نظارت"), {"fields": ("full_name_fa", "phone", "is_ad_account")}),
     )
+    # New-user form: capture VMS identity fields at creation time too.
+    add_fieldsets = DjangoUserAdmin.add_fieldsets + (
+        (_("اطلاعات سامانه نظارت"), {"fields": ("full_name_fa", "phone")}),
+    )
+
+    def get_inline_instances(self, request, obj=None):
+        # Role assignments reference the user row — hide the inline on the
+        # "add" form until the user actually exists.
+        if obj is None:
+            return []
+        return super().get_inline_instances(request, obj)
 
 
 @admin.register(Role)
