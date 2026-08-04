@@ -13,6 +13,18 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "insecure-dev-only-change-me")
 DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "*").split(",")
 
+# When the admin is reached through a reverse proxy (e.g. the Next.js /admin
+# proxy on a *.vercel.run preview or any HTTPS front), the browser Origin is
+# the proxy's origin — trust it for CSRF checks. Extend via env in production.
+CSRF_TRUSTED_ORIGINS = [
+    o
+    for o in os.environ.get(
+        "DJANGO_CSRF_TRUSTED_ORIGINS",
+        "https://*.vercel.run,https://*.v0.app,http://localhost:3000,http://127.0.0.1:3000",
+    ).split(",")
+    if o
+]
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -65,17 +77,26 @@ TEMPLATES = [
 ]
 
 # --- PostgreSQL (provisioned via docker/docker-compose.yml) -----------------
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ.get("POSTGRES_DB", "vms"),
-        "USER": os.environ.get("POSTGRES_USER", "vms"),
-        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "vms"),
-        "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
-        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
-        "CONN_MAX_AGE": 60,
+# Set DJANGO_DB=sqlite for a zero-dependency local dev database.
+if os.environ.get("DJANGO_DB") == "sqlite":
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "dev.sqlite3",
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.environ.get("POSTGRES_DB", "vms"),
+            "USER": os.environ.get("POSTGRES_USER", "vms"),
+            "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "vms"),
+            "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
+            "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+            "CONN_MAX_AGE": 60,
+        }
+    }
 
 AUTH_USER_MODEL = "accounts.User"
 
@@ -130,7 +151,8 @@ FACE_MATCH_THRESHOLD = float(os.environ.get("FACE_MATCH_THRESHOLD", "0.45"))
 
 # --- Mandatory Farsi localization -------------------------------------------
 LANGUAGE_CODE = "fa"
-LANGUAGES = [("fa", "فارسی"), ("en", "English")]
+# Farsi only: keeps the admin fully RTL/Farsi regardless of browser locale.
+LANGUAGES = [("fa", "فارسی")]
 LOCALE_PATHS = [BASE_DIR / "locale"]
 USE_I18N = True
 

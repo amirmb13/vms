@@ -688,3 +688,138 @@ ul.messagelist li {
 .inline-related {
   border-radius: var(--vms-radius-sm);
 }
+
+/* ============================================================================
+   V2 — dashboard card grid, sticky header, pill actions
+   ========================================================================== */
+
+/* Sticky slim header */
+#header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 10px 28px;
+  backdrop-filter: blur(8px);
+}
+
+/* Dashboard: apps as a responsive card grid */
+.dashboard #content {
+  max-width: 1200px;
+}
+
+.dashboard #content-main {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.dashboard #content-main .module {
+  margin-bottom: 0;
+}
+
+.dashboard #content-main .module table {
+  width: 100%;
+}
+
+/* App caption: accent bar + bolder title */
+.dashboard .module caption,
+.dashboard .module caption a.section {
+  font-size: 0.875rem;
+}
+
+.dashboard .module caption {
+  position: relative;
+  padding-inline-start: 20px;
+}
+
+.dashboard .module caption::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--vms-primary);
+}
+
+/* Model rows: hover + comfortable height */
+.dashboard .model-list tr {
+  transition: background 100ms ease;
+}
+
+.dashboard .model-list tr:hover {
+  background: var(--darkened-bg);
+}
+
+.dashboard .model-list th a {
+  font-weight: 600;
+}
+
+/* Add / Change / View as quiet pills */
+.addlink,
+.changelink,
+.viewlink {
+  border-radius: 999px;
+  padding: 3px 10px 3px 8px;
+  border: 1px solid var(--border-color);
+  background: var(--vms-surface);
+  transition: background 100ms ease, border-color 100ms ease;
+  white-space: nowrap;
+}
+
+.addlink:hover,
+.changelink:hover,
+.viewlink:hover {
+  background: var(--vms-primary-soft);
+  border-color: var(--vms-primary);
+}
+
+/* Recent actions card spans naturally in the side column */
+#content-related .module {
+  background: var(--vms-surface);
+}
+
+/* Page heading block */
+#content > h1:first-child,
+#content h1 {
+  margin-bottom: 18px;
+}
+
+/* Breadcrumbs: subtle, with separators kept quiet */
+div.breadcrumbs a {
+  font-weight: 600;
+}
+
+/* Focus visibility for keyboard users */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--vms-primary);
+  outline-offset: 2px;
+  border-radius: var(--vms-radius-sm);
+}
+
+/* Filter sidebar toggle + changelist toolbar spacing */
+#toolbar {
+  background: transparent;
+  border: none;
+  padding: 0 0 12px;
+}
+
+#toolbar form input[type="submit"] {
+  margin-inline-start: 8px;
+}
+
+/* Delete confirmation: keep destructive action visually distinct */
+.delete-confirmation input[type="submit"] {
+  background: var(--vms-danger);
+}
+
+/* Object history & misc tables inherit card look */
+#change-history {
+  border-radius: var(--vms-radius);
+  overflow: hidden;
+}
