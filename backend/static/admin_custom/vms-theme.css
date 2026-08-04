@@ -941,16 +941,46 @@ ul.messagelist li {
   backdrop-filter: blur(8px);
 }
 
-/* Dashboard: apps as a responsive card grid */
+/* Dashboard: apps as a responsive card grid.
+   Django's base CSS pins `.dashboard #content { width: 600px }` — undo that
+   and lay out main grid + recent-actions side column with flexbox (RTL-aware). */
 .dashboard #content {
-  max-width: 1200px;
+  width: auto;
+  max-width: 1400px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.dashboard #content > h1 {
+  flex-basis: 100%;
+  margin-bottom: 0;
 }
 
 .dashboard #content-main {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  float: none;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 20px;
   align-items: start;
+}
+
+.dashboard #content-related {
+  flex: 0 0 280px;
+  width: 280px;
+  float: none;
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .dashboard #content-related {
+    flex-basis: 100%;
+    width: 100%;
+  }
 }
 
 .dashboard #content-main .module {

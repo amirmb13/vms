@@ -18,13 +18,22 @@ class UserAdmin(DjangoUserAdmin):
         "username",
         "full_name_fa",
         "phone",
+        "group_list",
         "is_ad_account",
         "is_active",
         "is_staff",
     )
-    list_filter = ("is_active", "is_staff", "is_ad_account")
+    list_filter = ("is_active", "is_staff", "is_ad_account", "groups")
     search_fields = ("username", "full_name_fa", "phone", "email")
     ordering = ("username",)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related("groups")
+
+    @admin.display(description=_("گروه‌ها"))
+    def group_list(self, obj):
+        names = [g.name for g in obj.groups.all()]
+        return "، ".join(names) if names else "—"
     fieldsets = DjangoUserAdmin.fieldsets + (
         (_("اطلاعات سامانه نظارت"), {"fields": ("full_name_fa", "phone", "is_ad_account")}),
     )
@@ -107,12 +116,33 @@ class GroupAdmin(DjangoGroupAdmin):
         return obj._member_count
 
 
+class AppLabelFilter(admin.SimpleListFilter):
+    """Localized sidebar filter — replaces the raw 'content_type__app_label'."""
+
+    title = _("اپلیکیشن")
+    parameter_name = "app"
+
+    def lookups(self, request, model_admin):
+        labels = (
+            model_admin.get_queryset(request)
+            .values_list("content_type__app_label", flat=True)
+            .distinct()
+            .order_by("content_type__app_label")
+        )
+        return [(label, label) for label in labels]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(content_type__app_label=self.value())
+        return queryset
+
+
 @admin.register(Permission)
 class PermissionAdmin(admin.ModelAdmin):
     """Browsable catalogue of system permissions (read-mostly)."""
 
     list_display = ("name", "codename", "app_label", "model_name")
-    list_filter = ("content_type__app_label",)
+    list_filter = (AppLabelFilter,)
     search_fields = ("name", "codename", "content_type__app_label")
     list_select_related = ("content_type",)
     ordering = ("content_type__app_label", "content_type__model", "codename")
