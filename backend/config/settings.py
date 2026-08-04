@@ -65,17 +65,27 @@ TEMPLATES = [
 ]
 
 # --- PostgreSQL (provisioned via docker/docker-compose.yml) -----------------
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ.get("POSTGRES_DB", "vms"),
-        "USER": os.environ.get("POSTGRES_USER", "vms"),
-        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "vms"),
-        "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
-        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
-        "CONN_MAX_AGE": 60,
+# DJANGO_DB=sqlite is a dev-only escape hatch for environments without
+# Postgres (e.g. quick admin previews). Production always uses PostgreSQL.
+if os.environ.get("DJANGO_DB") == "sqlite":
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "dev.sqlite3",
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.environ.get("POSTGRES_DB", "vms"),
+            "USER": os.environ.get("POSTGRES_USER", "vms"),
+            "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "vms"),
+            "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
+            "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+            "CONN_MAX_AGE": 60,
+        }
+    }
 
 AUTH_USER_MODEL = "accounts.User"
 

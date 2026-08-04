@@ -1,5 +1,6 @@
-// TEMP (v0 verification only): proxies /admin/* to the local Django dev
-// server so the admin redesign can be previewed. Will be removed.
+// TEMP (v0 verification only): proxies /static/* (Django admin CSS/JS/img)
+// to the local Django dev server so the admin redesign can be previewed.
+// Will be removed — in production nginx/whitenoise serves these directly.
 import type { NextRequest } from "next/server"
 
 const DJANGO = "http://127.0.0.1:8300"
@@ -10,16 +11,9 @@ async function proxy(req: NextRequest) {
   const headers = new Headers(req.headers)
   headers.set("host", "127.0.0.1:8300")
   headers.delete("accept-encoding")
-  // Rewrite browser origin so Django's CSRF origin check passes behind the proxy.
-  if (headers.has("origin")) headers.set("origin", DJANGO)
-  if (headers.has("referer")) {
-    const ref = new URL(headers.get("referer")!)
-    headers.set("referer", `${DJANGO}${ref.pathname}${ref.search}`)
-  }
   const res = await fetch(target, {
     method: req.method,
     headers,
-    body: req.method === "GET" || req.method === "HEAD" ? undefined : await req.arrayBuffer(),
     redirect: "manual",
   })
   const out = new Headers(res.headers)
@@ -29,5 +23,4 @@ async function proxy(req: NextRequest) {
 }
 
 export const GET = proxy
-export const POST = proxy
 export const HEAD = proxy

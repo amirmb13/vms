@@ -11,7 +11,8 @@
   rel="stylesheet"
   href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css"
 >
-<link rel="stylesheet" href="{% static 'admin_custom/vms-theme.css' %}">
+{# ?v= cache-buster — bump when vms-theme.css changes #}
+<link rel="stylesheet" href="{% static 'admin_custom/vms-theme.css' %}?v=3">
 {% endblock %}
 
 {% block branding %}

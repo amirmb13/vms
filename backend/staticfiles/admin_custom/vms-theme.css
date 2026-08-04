@@ -688,3 +688,90 @@ ul.messagelist li {
 .inline-related {
   border-radius: var(--vms-radius-sm);
 }
+
+/* ---- Dashboard: responsive card grid ---------------------------------------- */
+.dashboard #content {
+  width: auto;
+}
+
+.dashboard #content-main {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.dashboard #content-main .app-list,
+.dashboard #content-main .module {
+  width: 100%;
+  margin-bottom: 0;
+}
+
+.dashboard .module table {
+  width: 100%;
+}
+
+.dashboard .module caption {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  padding: 12px 16px;
+}
+
+.dashboard .module tr:hover {
+  background: var(--vms-primary-soft);
+}
+
+/* ---- Selector (filter_horizontal) header contrast --------------------------- */
+/* Django <=5.1 uses h2 headings; 5.2+ uses .selector-*-title divs. */
+.selector .selector-available h2,
+.selector .selector-available-title {
+  background: var(--darkened-bg);
+  color: var(--body-loud-color);
+  border-bottom: 1px solid var(--hairline-color);
+  font-weight: 600;
+}
+
+.selector .selector-chosen h2,
+.selector .selector-chosen-title {
+  background: var(--vms-primary-soft);
+  color: var(--vms-primary);
+  border-bottom: 1px solid var(--hairline-color);
+  font-weight: 700;
+}
+
+.selector .selector-available-title label,
+.selector .selector-chosen-title label {
+  color: inherit;
+}
+
+.selector .selector-chosen .helptext,
+.selector .selector-available .helptext,
+.selector p.help,
+.selector .help {
+  background: transparent;
+  color: var(--body-quiet-color);
+}
+
+.selector select {
+  background: var(--vms-surface);
+  color: var(--body-fg);
+  border-color: var(--hairline-color);
+}
+
+.selector .selector-filter {
+  background: var(--vms-surface);
+  border-bottom: 1px solid var(--hairline-color);
+}
+
+.selector .selector-filter input {
+  background: var(--body-bg);
+  color: var(--body-fg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--vms-radius-sm);
+}
+
+.selector-chooseall,
+.selector-clearall {
+  color: var(--vms-primary) !important;
+  font-weight: 600;
+}
