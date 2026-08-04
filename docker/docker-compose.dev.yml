@@ -22,13 +22,17 @@ services:
     volumes:
       - ../backend:/app
       - ../proto:/proto:ro
-    command: >
-      sh -c "mkdir -p generated &&
-             python -m grpc_tools.protoc -I /proto
-               --python_out=generated --grpc_python_out=generated
-               /proto/control_signals.proto /proto/ai_signaling.proto &&
-             python manage.py migrate --noinput &&
-             python manage.py runserver 0.0.0.0:8000"
+    # NOTE: keep every continuation line at the SAME indent level — with a
+    # YAML `>` block, deeper-indented lines keep their newlines and the shell
+    # command breaks apart.
+    command:
+      - sh
+      - -c
+      - >-
+        mkdir -p generated &&
+        python -m grpc_tools.protoc -I /proto --python_out=generated --grpc_python_out=generated /proto/control_signals.proto /proto/ai_signaling.proto &&
+        python manage.py migrate --noinput &&
+        python manage.py runserver 0.0.0.0:8000
 
   django-grpc:
     environment:
@@ -36,12 +40,13 @@ services:
     volumes:
       - ../backend:/app
       - ../proto:/proto:ro
-    command: >
-      sh -c "mkdir -p generated &&
-             python -m grpc_tools.protoc -I /proto
-               --python_out=generated --grpc_python_out=generated
-               /proto/control_signals.proto /proto/ai_signaling.proto &&
-             python manage.py run_control_grpc --port 50060"
+    command:
+      - sh
+      - -c
+      - >-
+        mkdir -p generated &&
+        python -m grpc_tools.protoc -I /proto --python_out=generated --grpc_python_out=generated /proto/control_signals.proto /proto/ai_signaling.proto &&
+        python manage.py run_control_grpc --port 50060
 
   django-health-poller:
     environment:
@@ -49,9 +54,10 @@ services:
     volumes:
       - ../backend:/app
       - ../proto:/proto:ro
-    command: >
-      sh -c "mkdir -p generated &&
-             python -m grpc_tools.protoc -I /proto
-               --python_out=generated --grpc_python_out=generated
-               /proto/control_signals.proto /proto/ai_signaling.proto &&
-             python manage.py poll_server_health --interval 15"
+    command:
+      - sh
+      - -c
+      - >-
+        mkdir -p generated &&
+        python -m grpc_tools.protoc -I /proto --python_out=generated --grpc_python_out=generated /proto/control_signals.proto /proto/ai_signaling.proto &&
+        python manage.py poll_server_health --interval 15
