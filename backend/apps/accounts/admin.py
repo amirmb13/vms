@@ -1,6 +1,10 @@
-"""Django admin — accounts: users, RBAC roles, and Four-Eyes requests."""
+"""Django admin — accounts: users, RBAC roles, Four-Eyes requests, and the
+Auth Manager (Django groups & permissions)."""
 from django.contrib import admin
+from django.contrib.auth.admin import GroupAdmin as DjangoGroupAdmin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
+from django.contrib.auth.models import Group, Permission
+from django.db.models import Count
 from django.utils.translation import gettext_lazy as _
 
 from apps.common.shamsi import utc_to_shamsi
@@ -72,3 +76,58 @@ class FourEyesRequestAdmin(admin.ModelAdmin):
     @admin.display(description=_("زمان اجرا (شمسی)"), ordering="executed_at")
     def executed_shamsi(self, obj):
         return utc_to_shamsi(obj.executed_at) if obj.executed_at else "—"
+
+
+# --- Auth Manager: Django groups & permissions ------------------------------
+admin.site.unregister(Group)
+
+
+@admin.register(Group)
+class GroupAdmin(DjangoGroupAdmin):
+    """Group management with member / permission counts at a glance."""
+
+    list_display = ("name", "permission_count", "member_count")
+    search_fields = ("name",)
+    filter_horizontal = ("permissions",)
+
+    def get_queryset(self, request):
+        return (
+            super()
+            .get_queryset(request)
+            .annotate(_perm_count=Count("permissions", distinct=True))
+            .annotate(_member_count=Count("user", distinct=True))
+        )
+
+    @admin.display(description=_("تعداد مجوزها"), ordering="_perm_count")
+    def permission_count(self, obj):
+        return obj._perm_count
+
+    @admin.display(description=_("تعداد اعضا"), ordering="_member_count")
+    def member_count(self, obj):
+        return obj._member_count
+
+
+@admin.register(Permission)
+class PermissionAdmin(admin.ModelAdmin):
+    """Browsable catalogue of system permissions (read-mostly)."""
+
+    list_display = ("name", "codename", "app_label", "model_name")
+    list_filter = ("content_type__app_label",)
+    search_fields = ("name", "codename", "content_type__app_label")
+    list_select_related = ("content_type",)
+    ordering = ("content_type__app_label", "content_type__model", "codename")
+
+    @admin.display(description=_("اپلیکیشن"), ordering="content_type__app_label")
+    def app_label(self, obj):
+        return obj.content_type.app_label
+
+    @admin.display(description=_("مدل"), ordering="content_type__model")
+    def model_name(self, obj):
+        return obj.content_type.model
+
+    # Permissions are code-defined; creating/deleting them by hand corrupts RBAC.
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

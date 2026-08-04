@@ -140,6 +140,18 @@ TIME_ZONE = "UTC"
 USE_TZ = True
 
 STATIC_URL = "static/"
+# Project-level static assets (custom admin theme lives here).
+STATICFILES_DIRS = [BASE_DIR / "static"]
+# collectstatic target — WhiteNoise serves from here under gunicorn.
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        # Compressed (gzip/brotli) static serving without nginx.
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+    },
+}
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Four-Eyes Authorization: operations listed here require two distinct

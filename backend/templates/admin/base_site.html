@@ -1,0 +1,24 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | مدیریت VMS{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+{# Vazirmatn — modern Farsi UI typeface with full RTL digit support #}
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css"
+>
+<link rel="stylesheet" href="{% static 'admin_custom/vms-theme.css' %}">
+{% endblock %}
+
+{% block branding %}
+<div id="site-name">
+  <a href="{% url 'admin:index' %}">سامانه مدیریت تصاویر نظارتی</a>
+</div>
+{% if user.is_anonymous %}{% include "admin/color_theme_toggle.html" %}{% endif %}
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
