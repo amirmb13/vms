@@ -190,6 +190,8 @@ void CameraTreeModel::reload() {
     if (pending_replies_ > 0) return;  // fetch already in flight
     setErrorFa({});
     cameras_accumulating_ = QJsonArray();
+    fetch_had_error_ = false;
+    fetch_got_data_ = false;
     pending_replies_ = 2;
     emit loadingChanged();
 
@@ -206,11 +208,26 @@ void CameraTreeModel::onGroupsReply(QNetworkReply* reply) {
     reply->deleteLater();
     if (reply->error() == QNetworkReply::NoError) {
         groups_data_ = extractArray(reply->readAll());
+        fetch_got_data_ = true;
+    } else {
+        // Keep the existing groups — never degrade the visible tree because
+        // the server was unreachable.
+        fetch_had_error_ = true;
     }
-    if (--pending_replies_ == 0) {
-        emit loadingChanged();
-        scheduleRebuild();
+    if (--pending_replies_ == 0) finishFetch();
+}
+
+// Called on the GUI thread once every in-flight reply has landed.
+void CameraTreeModel::finishFetch() {
+    emit loadingChanged();
+    if (fetch_had_error_) {
+        setErrorFa(QStringLiteral(
+            "سرور در دسترس نیست — داده‌های محلی نمایش داده می‌شود"));
     }
+    // Rebuild only when at least one endpoint returned fresh data. If both
+    // failed, the current tree (mock or last good fetch) stays intact, so
+    // group rows keep their children and their expand arrows.
+    if (fetch_got_data_) scheduleRebuild();
 }
 
 void CameraTreeModel::requestNextCamerasPage(const QUrl& url) {
@@ -223,7 +240,8 @@ void CameraTreeModel::onCamerasReply(QNetworkReply* reply) {
     reply->deleteLater();
 
     bool more_pages = false;
-    if (reply->error() == QNetworkReply::NoError) {
+    bool ok = (reply->error() == QNetworkReply::NoError);
+    if (ok) {
         const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
         if (doc.isArray()) {
             // Unpaginated server (legacy) — single shot.
@@ -246,12 +264,18 @@ void CameraTreeModel::onCamerasReply(QNetworkReply* reply) {
 
     if (more_pages) return;
 
-    cameras_data_ = cameras_accumulating_;
-    cameras_accumulating_ = QJsonArray();
-    if (--pending_replies_ == 0) {
-        emit loadingChanged();
-        scheduleRebuild();
+    if (ok) {
+        // Commit the accumulated pages only on success. On error the old
+        // cameras_data_ (mock or last good fetch) is preserved — overwriting
+        // it with the empty accumulator stripped every camera out of the
+        // tree and made group expand-arrows disappear.
+        cameras_data_ = cameras_accumulating_;
+        fetch_got_data_ = true;
+    } else {
+        fetch_had_error_ = true;
     }
+    cameras_accumulating_ = QJsonArray();
+    if (--pending_replies_ == 0) finishFetch();
 }
 
 // --- Tree assembly -----------------------------------------------------------

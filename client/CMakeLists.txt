@@ -46,6 +46,11 @@ qt_add_executable(vms_client
 # -----------------------------------------------------------------------------
 # 4. QML Module & Resources
 # -----------------------------------------------------------------------------
+# Theme is a QML singleton (design tokens shared by every view).
+set_source_files_properties(qml/Theme.qml PROPERTIES
+    QT_QML_SINGLETON_TYPE TRUE
+)
+
 qt_add_qml_module(vms_client
     URI Vms.Client
     VERSION 1.0
@@ -56,6 +61,8 @@ qt_add_qml_module(vms_client
         qml/TimelineBar.qml
         qml/CameraTree.qml
         qml/SmartMap.qml
+        qml/Theme.qml
+        qml/UiButton.qml
     RESOURCES
         resources/fonts/Vazirmatn-Regular.ttf
         resources/fonts/Vazirmatn-Bold.ttf
