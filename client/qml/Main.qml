@@ -1,7 +1,10 @@
 // Main window — global RTL mirroring, Farsi UI, 60fps scene-graph rendering.
+// All chrome is custom-drawn from the Theme singleton — no platform-styled
+// controls, so colors are deterministic on every OS (no white-on-white).
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import Vms.Client
 
 ApplicationWindow {
     id: root
@@ -9,7 +12,7 @@ ApplicationWindow {
     width: 1600
     height: 900
     title: "سامانه مدیریت تصاویر نظارتی"
-    color: "#101418"
+    color: Theme.bg
 
     // Mandatory global RTL mirroring — every child inherits.
     LayoutMirroring.enabled: true
@@ -17,30 +20,86 @@ ApplicationWindow {
 
     font.family: "Vazirmatn"
 
-    header: ToolBar {
+    // Current nav section (only "live" is implemented today; the active
+    // state keeps the header honest instead of five identical dead buttons).
+    property string currentView: "live"
+
+    header: Rectangle {
+        height: 50
+        color: Theme.surface
+
+        Rectangle {
+            anchors.bottom: parent.bottom
+            width: parent.width
+            height: 1
+            color: Theme.borderSoft
+        }
+
         RowLayout {
             anchors.fill: parent
-            spacing: 8
+            anchors.leftMargin: 14
+            anchors.rightMargin: 14
+            spacing: 6
 
-            Label {
-                text: "پخش زنده"
-                font.bold: true
-                Layout.leftMargin: 16
+            // Brand mark + product name
+            Rectangle {
+                width: 26; height: 26
+                radius: Theme.radiusSm
+                color: Theme.accentSoft
+                border.width: 1
+                border.color: Qt.alpha(Theme.accent, 0.4)
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "\u25a3"          // ▣ — video-wall mark
+                    color: Theme.accent
+                    font.pixelSize: 13
+                }
             }
-            ToolButton { text: "بازبینی" }
-            ToolButton { text: "جستجوی پیشرفته" }
-            ToolButton { text: "نقشه هوشمند" }
-            Item { Layout.fillWidth: true }
-            ToolButton { text: "تنظیمات سرور" }
 
-            // Live Shamsi clock (UTC internally; Shamsi at the edge).
             Label {
-                id: clockLabel
-                Layout.rightMargin: 16
-                text: shamsi.nowShamsi()
-                Timer {
-                    interval: 1000; running: true; repeat: true
-                    onTriggered: clockLabel.text = shamsi.nowShamsi()
+                text: "سامانه نظارت تصویری"
+                color: Theme.text
+                font.pixelSize: 14
+                font.bold: true
+                Layout.rightMargin: 10
+            }
+
+            Rectangle { width: 1; height: 22; color: Theme.border }
+
+            UiButton {
+                text: "پخش زنده"
+                active: root.currentView === "live"
+                onClicked: root.currentView = "live"
+            }
+            UiButton { text: "بازبینی" }
+            UiButton { text: "جستجوی پیشرفته" }
+            UiButton { text: "نقشه هوشمند" }
+
+            Item { Layout.fillWidth: true }
+
+            UiButton { text: "تنظیمات سرور" }
+
+            // Live Shamsi clock chip (UTC internally; Shamsi at the edge).
+            Rectangle {
+                width: clockLabel.implicitWidth + 22
+                height: 28
+                radius: Theme.radiusSm
+                color: Theme.surface2
+                border.width: 1
+                border.color: Theme.borderSoft
+
+                Label {
+                    id: clockLabel
+                    anchors.centerIn: parent
+                    text: shamsi.nowShamsi()
+                    color: Theme.textDim
+                    font.pixelSize: 12
+
+                    Timer {
+                        interval: 1000; running: true; repeat: true
+                        onTriggered: clockLabel.text = shamsi.nowShamsi()
+                    }
                 }
             }
         }
@@ -76,7 +135,7 @@ ApplicationWindow {
             // Master sync-playback timeline (broadcasts NTP timestamps)
             TimelineBar {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 88
+                Layout.preferredHeight: 92
             }
         }
     }

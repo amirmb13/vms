@@ -1,12 +1,22 @@
 // Camera directory tree — RTL Farsi TreeView over the C++ cameraTreeModel.
-// Group rows show name + camera count; camera leaves are draggable into the
-// Grid Engine (drag payload = camera UUID).
+// Group rows show name + camera-count pill; camera leaves are activated by
+// double-click. All colors come from the Theme singleton.
 import QtQuick
 import QtQuick.Controls
+import Vms.Client
 
 Rectangle {
     id: root
-    color: "#161b21"
+    color: Theme.surface
+
+    // Panel edge hairline (separates the tree from the video wall).
+    Rectangle {
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: 1
+        color: Theme.borderSoft
+    }
 
     // Emitted when the operator activates a camera leaf (double-click).
     signal cameraActivated(string cameraUuid, string nameFa)
@@ -14,37 +24,91 @@ Rectangle {
     Column {
         anchors.fill: parent
 
-        // Header + manual refresh
-        Rectangle {
+        // ---- Panel header -------------------------------------------------
+        Item {
             width: parent.width
-            height: 40
-            color: "#1d242c"
+            height: 46
 
             Label {
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.right: parent.right
-                anchors.rightMargin: 12
-                text: "فهرست دوربین‌ها"
+                anchors.rightMargin: 14
+                text: "دوربین‌ها"
+                font.pixelSize: 13
                 font.bold: true
-                color: "#e8edf2"
+                color: Theme.text
             }
 
-            ToolButton {
+            // Refresh — custom-drawn so it can never fall back to a light
+            // platform style. Spins subtly while a fetch is in flight.
+            Rectangle {
+                id: refreshBtn
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.left: parent.left
-                anchors.leftMargin: 4
-                text: "\u21bb"
-                enabled: !cameraTreeModel.loading
-                onClicked: cameraTreeModel.reload()
+                anchors.leftMargin: 10
+                width: 28; height: 28
+                radius: Theme.radiusSm
+                color: refreshTap.pressed ? Theme.surface3
+                     : refreshHover.hovered ? Theme.surface2 : "transparent"
+
+                Behavior on color { ColorAnimation { duration: 90 } }
+
+                Text {
+                    id: refreshGlyph
+                    anchors.centerIn: parent
+                    text: "\u21bb"
+                    font.pixelSize: 15
+                    color: cameraTreeModel.loading ? Theme.accent
+                         : refreshHover.hovered ? Theme.text : Theme.textDim
+
+                    RotationAnimation on rotation {
+                        running: cameraTreeModel.loading
+                        loops: Animation.Infinite
+                        from: 0; to: 360
+                        duration: 900
+                        onRunningChanged: if (!running) refreshGlyph.rotation = 0
+                    }
+                }
+
+                HoverHandler { id: refreshHover }
+                TapHandler {
+                    id: refreshTap
+                    enabled: !cameraTreeModel.loading
+                    onTapped: cameraTreeModel.reload()
+                }
+            }
+
+            Rectangle {
+                anchors.bottom: parent.bottom
+                width: parent.width
+                height: 1
+                color: Theme.borderSoft
             }
         }
 
         TreeView {
             id: treeView
             width: parent.width
-            height: parent.height - 40
+            height: parent.height - 46
             clip: true
             model: cameraTreeModel
+
+            // Delegate pooling is disabled on purpose: the directory model is
+            // swapped wholesale (beginResetModel/endResetModel) when a server
+            // fetch lands a few seconds after startup, and reused delegates
+            // could keep stale required-property snapshots (hasChildren /
+            // isTreeNode) — which made a group's expand arrow silently vanish
+            // right after launch.
+            reuseItems: false
+
+            ScrollBar.vertical: ScrollBar {
+                policy: ScrollBar.AsNeeded
+                contentItem: Rectangle {
+                    implicitWidth: 4
+                    radius: 2
+                    color: Theme.border
+                }
+            }
 
             // Fully custom RTL delegate. The stock TreeViewDelegate draws its
             // expand indicator with LTR geometry (left margin + depth
@@ -56,7 +120,7 @@ Rectangle {
             delegate: Item {
                 id: cell
                 implicitWidth: treeView.width
-                implicitHeight: 32
+                implicitHeight: 34
 
                 required property TreeView treeView
                 required property bool isTreeNode
@@ -72,59 +136,89 @@ Rectangle {
                 required property int cameraCount
                 required property bool recordingEnabled
 
-                // Hover / selection feedback
+                // Hover feedback
                 Rectangle {
                     anchors.fill: parent
-                    color: hover.hovered ? "#222a33" : "transparent"
+                    anchors.leftMargin: 6
+                    anchors.rightMargin: 6
+                    radius: Theme.radiusSm
+                    color: hover.hovered ? Theme.surface2 : "transparent"
+                    Behavior on color { ColorAnimation { duration: 80 } }
                 }
                 HoverHandler { id: hover }
 
-                // Expand/collapse arrow — right-anchored. ▾ when expanded,
-                // ◂ (pointing left = RTL "closed") when collapsed. The glyph
-                // swaps directly with no rotation animation: animated
-                // rotation caused spurious spins when TreeView reused
-                // delegates during expand/collapse. The arrow deliberately
-                // has NO TapHandler of its own — the row-level handler below
-                // covers the whole row. A second handler here made a single
-                // click toggle the group twice (open then instantly close).
+                // Expand/collapse arrow — right-anchored, shown for EVERY
+                // group row (not gated on hasChildren) so it can never blink
+                // out when the model is rebuilt after a server fetch; a group
+                // that is momentarily childless just dims it. ▾ expanded,
+                // ◂ (pointing left = RTL "closed") collapsed. The glyph swaps
+                // with no rotation animation — animated rotation caused
+                // spurious spins when TreeView recycled delegates. The arrow
+                // deliberately has NO TapHandler of its own — the row-level
+                // handler below covers the whole row; a second handler here
+                // made one click toggle the group twice.
                 Text {
                     id: arrow
-                    visible: cell.isTreeNode && cell.hasChildren
+                    visible: !cell.isCamera
+                    opacity: cell.hasChildren ? 1 : 0.35
                     anchors.right: parent.right
-                    anchors.rightMargin: 8 + cell.depth * 16
+                    anchors.rightMargin: 12 + cell.depth * 16
                     anchors.verticalCenter: parent.verticalCenter
                     text: cell.expanded ? "\u25be" : "\u25c2"   // ▾ / ◂
-                    color: "#8b949e"
-                    font.pixelSize: 14
+                    color: cell.expanded ? Theme.textDim : Theme.textMute
+                    font.pixelSize: 13
                 }
 
                 Row {
-                    spacing: 6
+                    spacing: 8
                     layoutDirection: Qt.RightToLeft
                     anchors.right: parent.right
                     // Reserve arrow width so labels align whether or not the
                     // row has an arrow; indent grows to the right per depth.
-                    anchors.rightMargin: 28 + cell.depth * 16
+                    anchors.rightMargin: 32 + cell.depth * 16
                     anchors.left: parent.left
-                    anchors.leftMargin: 8
+                    anchors.leftMargin: 12
                     anchors.verticalCenter: parent.verticalCenter
 
                     // Recording status dot for camera leaves
                     Rectangle {
                         visible: cell.isCamera
-                        width: 8; height: 8; radius: 4
+                        width: 7; height: 7; radius: 3.5
                         anchors.verticalCenter: parent.verticalCenter
-                        color: cell.recordingEnabled ? "#3fb950" : "#6e7681"
+                        color: cell.recordingEnabled ? Theme.success
+                                                     : Theme.textMute
                     }
 
                     Label {
-                        width: Math.min(implicitWidth, parent.width - 20)
-                        text: cell.isCamera
-                              ? cell.nameFa
-                              : cell.nameFa + " (" + cell.cameraCount + ")"
-                        color: cell.isCamera ? "#c9d1d9" : "#e8edf2"
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: Math.min(implicitWidth, parent.width - 44)
+                        text: cell.nameFa
+                        color: cell.isCamera
+                               ? (hover.hovered ? Theme.text : Theme.textDim)
+                               : Theme.text
+                        font.pixelSize: 13
                         font.bold: !cell.isCamera
                         elide: Text.ElideLeft
+
+                        Behavior on color { ColorAnimation { duration: 80 } }
+                    }
+
+                    // Camera-count pill for group rows
+                    Rectangle {
+                        visible: !cell.isCamera
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: countLabel.implicitWidth + 12
+                        height: 18
+                        radius: 9
+                        color: Theme.surface3
+
+                        Label {
+                            id: countLabel
+                            anchors.centerIn: parent
+                            text: cell.cameraCount
+                            color: Theme.textDim
+                            font.pixelSize: 11
+                        }
                     }
                 }
 
@@ -155,15 +249,23 @@ Rectangle {
     Rectangle {
         visible: cameraTreeModel.errorFa.length > 0
         anchors.bottom: parent.bottom
-        width: parent.width
-        height: 32
-        color: "#5c1e1e"
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.margins: 8
+        height: 34
+        radius: Theme.radiusSm
+        color: Theme.dangerSoft
+        border.width: 1
+        border.color: Qt.alpha(Theme.danger, 0.35)
 
         Label {
             anchors.centerIn: parent
+            width: parent.width - 16
+            horizontalAlignment: Text.AlignHCenter
             text: cameraTreeModel.errorFa
-            color: "#ffb4b4"
-            font.pixelSize: 12
+            color: Theme.danger
+            font.pixelSize: 11
+            elide: Text.ElideLeft
         }
     }
 }

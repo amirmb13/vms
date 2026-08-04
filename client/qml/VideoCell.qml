@@ -73,7 +73,7 @@ Item {
         anchors.centerIn: parent
         visible: !cell.hasFrame
         text: cell.statusFa.length > 0 ? cell.statusFa : "در حال اتصال..."
-        color: "#9ca3af"
+        color: Theme.textDim
         font.pixelSize: 13
         font.family: "Vazirmatn"
     }
@@ -82,17 +82,16 @@ Item {
     Rectangle {
         anchors.bottom: parent.bottom
         anchors.right: parent.right
-        anchors.margins: 6
-        color: "#000000"
-        opacity: 0.65
-        radius: 3
-        width: overlayLabel.implicitWidth + 12
-        height: overlayLabel.implicitHeight + 6
+        anchors.margins: 8
+        color: Qt.alpha(Theme.bg, 0.75)
+        radius: Theme.radiusSm
+        width: overlayLabel.implicitWidth + 14
+        height: overlayLabel.implicitHeight + 8
 
         Label {
             id: overlayLabel
             anchors.centerIn: parent
-            color: "#e5e7eb"
+            color: Theme.text
             font.pixelSize: 11
             font.family: "Vazirmatn"
             text: cell.lastFrameUtcUs > 0
@@ -126,10 +125,10 @@ Item {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.margins: 8
-        color: "#0b0e12"
-        border.color: "#2f81f7"
+        color: Theme.bg
+        border.color: Qt.alpha(Theme.accent, 0.6)
         border.width: 1
-        radius: 4
+        radius: Theme.radiusSm
         z: 10
 
         function openAt(utcUs) {
@@ -140,31 +139,32 @@ Item {
 
         Column {
             anchors.fill: parent
-            anchors.margins: 2
+            anchors.margins: 3
 
             Row {
                 width: parent.width
                 height: 24
-                spacing: 4
+                spacing: 6
                 layoutDirection: Qt.RightToLeft
 
                 Label {
                     text: "بازبینی"
-                    color: "#9ca3af"
+                    color: Theme.textDim
                     font.pixelSize: 11
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 Label {
                     text: pipWorker.positionUtcUs > 0
                           ? shamsi.toShamsiShort(pipWorker.positionUtcUs) : ""
-                    color: "#e5e7eb"
+                    color: Theme.text
                     font.pixelSize: 11
                     anchors.verticalCenter: parent.verticalCenter
                 }
-                Item { width: parent.width - 140; height: 1 }
-                ToolButton {
+                Item { width: parent.width - 150; height: 1 }
+                UiButton {
                     text: "بستن"
-                    font.pixelSize: 10
+                    implicitHeight: 22
+                    anchors.verticalCenter: parent.verticalCenter
                     onClicked: pipWorker.close()
                 }
             }

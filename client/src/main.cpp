@@ -6,6 +6,7 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QQuickStyle>
 #include <QQuickWindow>
 #include <QFontDatabase>
 #include <QLocale>
@@ -27,6 +28,12 @@ int main(int argc, char* argv[]) {
 
     QGuiApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("سامانه مدیریت تصاویر نظارتی"));
+
+    // Force the "Basic" (non-native) Controls style. Platform-native styles
+    // (FluentWinUI3 etc.) paint their own light backgrounds under our dark
+    // theme — that is exactly where white-on-white text came from — and they
+    // forbid customizing control internals (Slider, ComboBox).
+    QQuickStyle::setStyle(QStringLiteral("Basic"));
 
     // Farsi locale drives RTL layout direction application-wide.
     QLocale::setDefault(QLocale(QLocale::Persian, QLocale::Iran));

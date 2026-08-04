@@ -12,10 +12,11 @@
 // =============================================================================
 import QtQuick
 import QtQuick.Controls
+import Vms.Client
 
 Rectangle {
     id: engine
-    color: "#0b0e12"
+    color: Theme.bg
 
     // ---- Public API ----------------------------------------------------------
     // The validated layout_json object (already parsed to a JS object).
@@ -86,9 +87,12 @@ Rectangle {
             width: modelData.w * engine.cellW
             height: modelData.h * engine.cellH
 
-            color: "#12161c"
+            color: Theme.bg
             border.width: engine.focusedCell === index ? 2 : 1
-            border.color: engine.focusedCell === index ? "#2f81f7" : "#232a33"
+            border.color: engine.focusedCell === index ? Theme.accent
+                                                       : Theme.borderSoft
+
+            Behavior on border.color { ColorAnimation { duration: 100 } }
 
             // Runtime assignment (drag/activation) wins over the persisted
             // layout document.
@@ -127,12 +131,31 @@ Rectangle {
             }
 
             // Empty-cell placeholder (Farsi hint)
-            Label {
+            Column {
                 anchors.centerIn: parent
                 visible: cell.cameraUuid.length === 0
-                text: "دوربینی انتخاب نشده است"
-                color: "#4b5563"
-                font.pixelSize: 13
+                spacing: 6
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "\u25a3"           // ▣ — empty tile mark
+                    color: engine.focusedCell === cell.index
+                           ? Qt.alpha(Theme.accent, 0.55) : Theme.surface3
+                    font.pixelSize: 22
+                }
+                Label {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "دوربینی انتخاب نشده است"
+                    color: Theme.textMute
+                    font.pixelSize: 13
+                }
+                Label {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    visible: engine.focusedCell === cell.index
+                    text: "روی دوربین در فهرست دوبار کلیک کنید"
+                    color: Qt.alpha(Theme.textMute, 0.7)
+                    font.pixelSize: 11
+                }
             }
 
             TapHandler {

@@ -14,7 +14,7 @@ import Vms.Client
 
 Rectangle {
     id: map
-    color: "#0b0e12"
+    color: Theme.bg
 
     // Injected from Django: [{camera_uuid, name_fa, map_x, map_y,
     //                          fov_direction, fov_angle}, ...] (0..1 coords)
@@ -68,7 +68,7 @@ Rectangle {
                             ctx.moveTo(60, 60)
                             ctx.arc(60, 60, 55, dir - half, dir + half)
                             ctx.closePath()
-                            ctx.fillStyle = "#2f81f7"
+                            ctx.fillStyle = String(Theme.accent)
                             ctx.fill()
                         }
                     }
@@ -77,8 +77,8 @@ Rectangle {
                     Rectangle {
                         width: 14; height: 14; radius: 7
                         x: -7; y: -7
-                        color: "#2f81f7"
-                        border.color: "#e5e7eb"
+                        color: Theme.accent
+                        border.color: Theme.text
                         border.width: 2
 
                         TapHandler {
@@ -95,7 +95,7 @@ Rectangle {
                         y: 10
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: modelData.name_fa
-                        color: "#e5e7eb"
+                        color: Theme.text
                         font.pixelSize: 11
                         font.family: "Vazirmatn"
                     }
@@ -122,13 +122,14 @@ Rectangle {
         readonly property int popupCellIndex: 10000
 
         background: Rectangle {
-            color: "#0d1117"
-            border.color: "#2f81f7"
-            radius: 6
+            color: Theme.surface
+            border.color: Theme.border
+            border.width: 1
+            radius: Theme.radius
         }
 
         contentItem: Column {
-            spacing: 4
+            spacing: 6
 
             Row {
                 width: parent.width
@@ -137,12 +138,14 @@ Rectangle {
 
                 Label {
                     text: popup.nameFa
-                    color: "#e5e7eb"
+                    color: Theme.text
                     font.bold: true
+                    anchors.verticalCenter: parent.verticalCenter
                 }
-                Item { width: parent.width - 140; height: 1 }
-                ToolButton {
+                Item { width: parent.width - 150; height: 1 }
+                UiButton {
                     text: "بستن"
+                    anchors.verticalCenter: parent.verticalCenter
                     onClicked: popup.close()
                 }
             }
