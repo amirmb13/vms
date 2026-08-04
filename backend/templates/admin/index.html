@@ -1,0 +1,130 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static log %}
+
+{% block extrastyle %}{{ block.super }}
+<link rel="stylesheet" href="{% static 'admin_custom/vms-dashboard.css' %}">
+{% endblock %}
+
+{% block coltype %}colMS{% endblock %}
+{% block bodyclass %}{{ block.super }} dashboard vms-dashboard{% endblock %}
+{% block nav-breadcrumbs %}{% endblock %}
+{% block nav-sidebar %}{% endblock %}
+
+{% block content %}
+<div id="content-main" class="vms-dash">
+
+  {# ---- Page header -------------------------------------------------- #}
+  <header class="vms-dash-header">
+    <div>
+      <h1 class="vms-dash-title">پنل مدیریت</h1>
+      <p class="vms-dash-subtitle">
+        {% now "l، j F Y" %} —
+        خوش آمدید{% if user.get_short_name %}، {{ user.get_short_name }}{% elif user.username %}، {{ user.username }}{% endif %}
+      </p>
+    </div>
+    <span class="vms-dash-status" title="سامانه فعال است">
+      <span class="vms-dash-status-dot" aria-hidden="true"></span>
+      کنترل‌پلین فعال
+    </span>
+  </header>
+
+  {# ---- App cards ----------------------------------------------------- #}
+  {% if app_list %}
+  <div class="vms-app-grid">
+    {% for app in app_list %}
+    <section class="vms-app-card" aria-labelledby="app-{{ app.app_label }}">
+      <div class="vms-app-card-head">
+        <span class="vms-app-icon vms-app-icon--{{ app.app_label }}" aria-hidden="true">
+          {% if app.app_label == "accounts" %}
+            {# users #}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          {% elif app.app_label == "auth" %}
+            {# shield / permissions #}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+          {% elif app.app_label == "cameras" %}
+            {# camera #}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+          {% elif app.app_label == "layouts" %}
+            {# grid #}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          {% elif app.app_label == "audit" %}
+            {# scroll / log #}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+          {% elif app.app_label == "forensic" %}
+            {# search #}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          {% else %}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>
+          {% endif %}
+        </span>
+        <h2 id="app-{{ app.app_label }}" class="vms-app-name">
+          {% if app.has_module_perms %}<a href="{{ app.app_url }}">{{ app.name }}</a>{% else %}{{ app.name }}{% endif %}
+        </h2>
+      </div>
+
+      <ul class="vms-model-list">
+        {% for model in app.models %}
+        <li class="vms-model-row">
+          {% if model.admin_url %}
+          <a class="vms-model-link" href="{{ model.admin_url }}">{{ model.name }}</a>
+          {% else %}
+          <span class="vms-model-link">{{ model.name }}</span>
+          {% endif %}
+          <span class="vms-model-actions">
+            {% if model.add_url %}
+            <a class="vms-chip vms-chip--add" href="{{ model.add_url }}" title="افزودن {{ model.name }}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              <span class="sr-only">افزودن</span>
+            </a>
+            {% endif %}
+            {% if model.admin_url %}
+            <a class="vms-chip" href="{{ model.admin_url }}" title="مشاهده فهرست {{ model.name }}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <span class="sr-only">مشاهده</span>
+            </a>
+            {% endif %}
+          </span>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p>{% translate "You don’t have permission to view or edit anything." %}</p>
+  {% endif %}
+</div>
+{% endblock %}
+
+{# ---- Recent actions -------------------------------------------------- #}
+{% block sidebar %}
+<div id="content-related" class="vms-dash-side">
+  <div class="module vms-recent" id="recent-actions-module">
+    <h2>فعالیت‌های اخیر من</h2>
+    {% get_admin_log 10 as admin_log for_user user %}
+    {% if not admin_log %}
+    <p class="vms-recent-empty">فعالیتی ثبت نشده است.</p>
+    {% else %}
+    <ul class="vms-recent-list">
+      {% for entry in admin_log %}
+      <li class="vms-recent-item {% if entry.is_addition %}is-add{% elif entry.is_change %}is-change{% elif entry.is_deletion %}is-delete{% endif %}">
+        <span class="vms-recent-badge" aria-hidden="true"></span>
+        <div class="vms-recent-body">
+          {% if entry.is_deletion or not entry.get_admin_url %}
+          <span class="vms-recent-object">{{ entry.object_repr }}</span>
+          {% else %}
+          <a class="vms-recent-object" href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>
+          {% endif %}
+          <span class="vms-recent-meta">
+            {% if entry.content_type %}{% filter capfirst %}{{ entry.content_type.name }}{% endfilter %}{% else %}{% translate "Unknown content" %}{% endif %}
+            —
+            {% if entry.is_addition %}ایجاد{% elif entry.is_change %}ویرایش{% else %}حذف{% endif %}
+          </span>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
