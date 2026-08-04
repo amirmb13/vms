@@ -25,7 +25,7 @@ ApplicationWindow {
     property string currentView: "live"
 
     header: Rectangle {
-        height: 50
+        height: 52
         color: Theme.surface
 
         Rectangle {
@@ -37,13 +37,13 @@ ApplicationWindow {
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 14
-            anchors.rightMargin: 14
-            spacing: 6
+            anchors.leftMargin: 16
+            anchors.rightMargin: 16
+            spacing: 4
 
             // Brand mark + product name
             Rectangle {
-                width: 26; height: 26
+                width: 28; height: 28
                 radius: Theme.radiusSm
                 color: Theme.accentSoft
                 border.width: 1
@@ -63,18 +63,26 @@ ApplicationWindow {
                 font.pixelSize: 14
                 font.bold: true
                 Layout.rightMargin: 10
+                Layout.leftMargin: 6
             }
 
-            Rectangle { width: 1; height: 22; color: Theme.border }
+            Rectangle {
+                width: 1; height: 22; color: Theme.borderSoft
+                Layout.leftMargin: 6; Layout.rightMargin: 6
+            }
 
+            // Nav tabs — active tab carries a slim accent underline; the
+            // fill stays quiet so the header doesn't compete with the wall.
             UiButton {
                 text: "پخش زنده"
+                underlineWhenActive: true
                 active: root.currentView === "live"
+                Layout.fillHeight: true
                 onClicked: root.currentView = "live"
             }
-            UiButton { text: "بازبینی" }
-            UiButton { text: "جستجوی پیشرفته" }
-            UiButton { text: "نقشه هوشمند" }
+            UiButton { text: "بازبینی"; underlineWhenActive: true; Layout.fillHeight: true }
+            UiButton { text: "جستجوی پیشرفته"; underlineWhenActive: true; Layout.fillHeight: true }
+            UiButton { text: "نقشه هوشمند"; underlineWhenActive: true; Layout.fillHeight: true }
 
             Item { Layout.fillWidth: true }
 
@@ -82,23 +90,37 @@ ApplicationWindow {
 
             // Live Shamsi clock chip (UTC internally; Shamsi at the edge).
             Rectangle {
-                width: clockLabel.implicitWidth + 22
-                height: 28
-                radius: Theme.radiusSm
+                width: clockRow.implicitWidth + 24
+                height: 30
+                radius: 15
                 color: Theme.surface2
                 border.width: 1
                 border.color: Theme.borderSoft
+                Layout.leftMargin: 6
 
-                Label {
-                    id: clockLabel
+                Row {
+                    id: clockRow
                     anchors.centerIn: parent
-                    text: shamsi.nowShamsi()
-                    color: Theme.textDim
-                    font.pixelSize: 12
+                    spacing: 8
+                    layoutDirection: Qt.RightToLeft
 
-                    Timer {
-                        interval: 1000; running: true; repeat: true
-                        onTriggered: clockLabel.text = shamsi.nowShamsi()
+                    Rectangle {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 6; height: 6; radius: 3
+                        color: Theme.success
+                    }
+
+                    Label {
+                        id: clockLabel
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: shamsi.nowShamsi()
+                        color: Theme.textDim
+                        font.pixelSize: Theme.fontSm
+
+                        Timer {
+                            interval: 1000; running: true; repeat: true
+                            onTriggered: clockLabel.text = shamsi.nowShamsi()
+                        }
                     }
                 }
             }

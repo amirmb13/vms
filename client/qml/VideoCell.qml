@@ -68,14 +68,40 @@ Item {
     }
 
     // Connection/decode status — visible until the first frame arrives, so a
-    // failed stream shows why instead of a silent black cell.
-    Label {
+    // failed stream shows why instead of a silent black cell. A slim spinner
+    // ring communicates "working" without text shouting.
+    Column {
         anchors.centerIn: parent
         visible: !cell.hasFrame
-        text: cell.statusFa.length > 0 ? cell.statusFa : "در حال اتصال..."
-        color: Theme.textDim
-        font.pixelSize: 13
-        font.family: "Vazirmatn"
+        spacing: 10
+
+        Item {
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: 22; height: 22
+
+            Text {
+                id: spinnerGlyph
+                anchors.centerIn: parent
+                text: "\u25cc"      // ◌ — dotted ring
+                color: Theme.accent
+                font.pixelSize: 20
+
+                RotationAnimation on rotation {
+                    running: !cell.hasFrame && cell.visible
+                    loops: Animation.Infinite
+                    from: 0; to: 360
+                    duration: 1400
+                }
+            }
+        }
+
+        Label {
+            anchors.horizontalCenter: parent.horizontalCenter
+            text: cell.statusFa.length > 0 ? cell.statusFa : "در حال اتصال..."
+            color: Theme.textDim
+            font.pixelSize: Theme.fontMd
+            font.family: "Vazirmatn"
+        }
     }
 
     // --- Shamsi timestamp overlay (bottom-right in RTL context) --------------
@@ -83,16 +109,18 @@ Item {
         anchors.bottom: parent.bottom
         anchors.right: parent.right
         anchors.margins: 8
-        color: Qt.alpha(Theme.bg, 0.75)
+        color: Qt.alpha(Theme.bg, 0.8)
         radius: Theme.radiusSm
-        width: overlayLabel.implicitWidth + 14
-        height: overlayLabel.implicitHeight + 8
+        border.width: 1
+        border.color: Qt.alpha(Theme.border, 0.5)
+        width: overlayLabel.implicitWidth + 16
+        height: overlayLabel.implicitHeight + 10
 
         Label {
             id: overlayLabel
             anchors.centerIn: parent
             color: Theme.text
-            font.pixelSize: 11
+            font.pixelSize: Theme.fontXs + 1
             font.family: "Vazirmatn"
             text: cell.lastFrameUtcUs > 0
                   ? shamsi.toShamsi(cell.lastFrameUtcUs)
@@ -121,12 +149,12 @@ Item {
         id: pipPopup
         visible: pipWorker.active
         width: Math.max(parent.width * 0.35, 220)
-        height: width * 9 / 16 + 28
+        height: width * 9 / 16 + 30
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.margins: 8
-        color: Theme.bg
-        border.color: Qt.alpha(Theme.accent, 0.6)
+        color: Theme.surface
+        border.color: Qt.alpha(Theme.accent, 0.55)
         border.width: 1
         radius: Theme.radiusSm
         z: 10
@@ -143,21 +171,21 @@ Item {
 
             Row {
                 width: parent.width
-                height: 24
+                height: 26
                 spacing: 6
                 layoutDirection: Qt.RightToLeft
 
                 Label {
                     text: "بازبینی"
                     color: Theme.textDim
-                    font.pixelSize: 11
+                    font.pixelSize: Theme.fontXs + 1
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 Label {
                     text: pipWorker.positionUtcUs > 0
                           ? shamsi.toShamsiShort(pipWorker.positionUtcUs) : ""
                     color: Theme.text
-                    font.pixelSize: 11
+                    font.pixelSize: Theme.fontXs + 1
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 Item { width: parent.width - 150; height: 1 }
@@ -172,7 +200,7 @@ Item {
             VideoOutput {
                 id: pipVideo
                 width: parent.width
-                height: parent.height - 28
+                height: parent.height - 30
                 fillMode: VideoOutput.PreserveAspectFit
             }
         }

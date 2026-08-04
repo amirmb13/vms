@@ -71,7 +71,7 @@ Rectangle {
         id: repeater
         model: layoutJson && layoutJson.cells ? layoutJson.cells : []
 
-        delegate: Rectangle {
+        delegate: Item {
             id: cell
 
             required property var modelData
@@ -87,12 +87,7 @@ Rectangle {
             width: modelData.w * engine.cellW
             height: modelData.h * engine.cellH
 
-            color: Theme.bg
-            border.width: engine.focusedCell === index ? 2 : 1
-            border.color: engine.focusedCell === index ? Theme.accent
-                                                       : Theme.borderSoft
-
-            Behavior on border.color { ColorAnimation { duration: 100 } }
+            readonly property bool focused: engine.focusedCell === cell.index
 
             // Runtime assignment (drag/activation) wins over the persisted
             // layout document.
@@ -103,58 +98,88 @@ Rectangle {
                 return modelData.camera_uuid ? modelData.camera_uuid : ""
             }
 
-            // Video surface: VideoCell handles decode -> QSGTexture upload on
-            // the RHI scene graph. Loaded only when a camera is assigned.
-            Loader {
+            // Inner tile — inset from the cell bounds so tiles read as
+            // separate panels with a real gutter instead of shared hairlines.
+            Rectangle {
+                id: tile
                 anchors.fill: parent
-                anchors.margins: 1
-                active: cell.cameraUuid.length > 0
-                source: "VideoCell.qml"
-                onLoaded: {
-                    // Order matters: cellIndex MUST be set before cameraUuid,
-                    // because onCameraUuidChanged triggers attachLive() which
-                    // keys the decoder session by cellIndex. Without this,
-                    // every cell attaches with the default index (-1) and all
-                    // cells share one decoder — assigning a second camera
-                    // steals the decoder and blanks the first cell.
-                    item.cellIndex = cell.index
-                    // Adaptive profile: sub-stream for small tiles, mid/main
-                    // when the merged cell is large enough to justify it.
-                    item.preferredProfile = Qt.binding(function() {
-                        return (cell.width > engine.width / 2) ? "main"
-                             : (cell.width > engine.width / 4) ? "mid" : "sub"
-                    })
-                    item.cameraUuid = Qt.binding(function() {
-                        return cell.cameraUuid
-                    })
-                }
-            }
+                anchors.margins: 3
+                radius: Theme.radiusSm
+                color: cell.cameraUuid.length > 0 ? "#000000" : Theme.surface
+                border.width: cell.focused ? 2 : 1
+                border.color: cell.focused ? Theme.accent : Theme.borderSoft
 
-            // Empty-cell placeholder (Farsi hint)
-            Column {
-                anchors.centerIn: parent
-                visible: cell.cameraUuid.length === 0
-                spacing: 6
+                Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
 
-                Text {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: "\u25a3"           // ▣ — empty tile mark
-                    color: engine.focusedCell === cell.index
-                           ? Qt.alpha(Theme.accent, 0.55) : Theme.surface3
-                    font.pixelSize: 22
+                // Video surface: VideoCell handles decode -> QSGTexture upload
+                // on the RHI scene graph. Loaded only when a camera is
+                // assigned.
+                Loader {
+                    anchors.fill: parent
+                    anchors.margins: 2
+                    active: cell.cameraUuid.length > 0
+                    source: "VideoCell.qml"
+                    onLoaded: {
+                        // Order matters: cellIndex MUST be set before
+                        // cameraUuid, because onCameraUuidChanged triggers
+                        // attachLive() which keys the decoder session by
+                        // cellIndex. Without this, every cell attaches with
+                        // the default index (-1) and all cells share one
+                        // decoder — assigning a second camera steals the
+                        // decoder and blanks the first cell.
+                        item.cellIndex = cell.index
+                        // Adaptive profile: sub-stream for small tiles,
+                        // mid/main when the merged cell is large enough to
+                        // justify it.
+                        item.preferredProfile = Qt.binding(function() {
+                            return (cell.width > engine.width / 2) ? "main"
+                                 : (cell.width > engine.width / 4) ? "mid" : "sub"
+                        })
+                        item.cameraUuid = Qt.binding(function() {
+                            return cell.cameraUuid
+                        })
+                    }
                 }
-                Label {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: "دوربینی انتخاب نشده است"
-                    color: Theme.textMute
-                    font.pixelSize: 13
-                }
-                Label {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    visible: engine.focusedCell === cell.index
-                    text: "روی دوربین در فهرست دوبار کلیک کنید"
-                    color: Qt.alpha(Theme.textMute, 0.7)
-                    font.pixelSize: 11
+
+                // Empty-cell placeholder (Farsi hint)
+                Column {
+                    anchors.centerIn: parent
+                    visible: cell.cameraUuid.length === 0
+                    spacing: 10
+
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: 44; height: 44
+                        radius: Theme.radius
+                        color: cell.focused ? Theme.accentSoft : Theme.surface2
+                        border.width: 1
+                        border.color: cell.focused
+                                      ? Qt.alpha(Theme.accent, 0.4)
+                                      : Theme.borderSoft
+
+                        Behavior on color { ColorAnimation { duration: Theme.durFast } }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "\u25a3"           // ▣ — empty tile mark
+                            color: cell.focused ? Theme.accent : Theme.textMute
+                            font.pixelSize: 18
+                        }
+                    }
+
+                    Label {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: "دوربینی انتخاب نشده است"
+                        color: Theme.textDim
+                        font.pixelSize: Theme.fontMd
+                    }
+                    Label {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        visible: cell.focused
+                        text: "روی دوربین در فهرست دوبار کلیک کنید"
+                        color: Theme.textMute
+                        font.pixelSize: Theme.fontXs + 1
+                    }
                 }
             }
 

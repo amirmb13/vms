@@ -44,7 +44,7 @@ Rectangle {
                 onClicked: syncPlayback.jumpToLive()
             }
 
-            Rectangle { width: 1; height: 18; color: Theme.border }
+            Rectangle { width: 1; height: 18; color: Theme.borderSoft }
 
             UiButton {
                 text: syncPlayback.playing ? "توقف" : "پخش"
@@ -73,11 +73,12 @@ Rectangle {
 
                 background: Rectangle {
                     radius: Theme.radiusSm
-                    color: rateBox.pressed ? Theme.surface3
-                         : rateBox.hovered ? Theme.surface2 : Theme.surface2
+                    color: rateBox.pressed ? Theme.surface3 : Theme.surface2
                     border.width: 1
                     border.color: rateBox.activeFocus ? Qt.alpha(Theme.accent, 0.5)
-                                                      : Theme.border
+                         : rateBox.hovered ? Theme.border : Theme.borderSoft
+
+                    Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
                 }
 
                 contentItem: Text {
@@ -86,7 +87,7 @@ Rectangle {
                     text: rateBox.displayText
                     color: Theme.text
                     font.family: "Vazirmatn"
-                    font.pixelSize: 12
+                    font.pixelSize: Theme.fontSm
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                     elide: Text.ElideRight
@@ -116,11 +117,12 @@ Rectangle {
                         color: rateItem.index === rateBox.currentIndex
                                ? Theme.accent : Theme.text
                         font.family: "Vazirmatn"
-                        font.pixelSize: 12
+                        font.pixelSize: Theme.fontSm
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
                     background: Rectangle {
+                        radius: Theme.radiusSm - 2
                         color: rateItem.hovered ? Theme.surface3 : "transparent"
                     }
                 }
@@ -149,14 +151,26 @@ Rectangle {
 
             Item { Layout.fillWidth: true }
 
-            // Master position — full Shamsi stamp.
-            Label {
-                text: syncPlayback.positionUtcUs > 0
-                      ? shamsi.toShamsi(syncPlayback.positionUtcUs)
-                      : "—"
-                color: Theme.text
-                font.pixelSize: 13
-                font.bold: true
+            // Master position — full Shamsi stamp inside a quiet chip so the
+            // readout has a stable footprint instead of floating text.
+            Rectangle {
+                width: posLabel.implicitWidth + 22
+                height: 28
+                radius: Theme.radiusSm
+                color: Theme.surface2
+                border.width: 1
+                border.color: Theme.borderSoft
+
+                Label {
+                    id: posLabel
+                    anchors.centerIn: parent
+                    text: syncPlayback.positionUtcUs > 0
+                          ? shamsi.toShamsi(syncPlayback.positionUtcUs)
+                          : "—"
+                    color: Theme.text
+                    font.pixelSize: Theme.fontSm
+                    font.bold: true
+                }
             }
         }
 
@@ -184,14 +198,14 @@ Rectangle {
                 x: timeline.leftPadding
                 y: timeline.topPadding + timeline.availableHeight / 2 - height / 2
                 width: timeline.availableWidth
-                height: 5
-                radius: 2.5
+                height: 4
+                radius: 2
                 color: bar.hasWindow ? Theme.surface3 : Theme.surface2
 
                 Rectangle {
                     width: timeline.visualPosition * parent.width
                     height: parent.height
-                    radius: 2.5
+                    radius: 2
                     color: Theme.accent
                 }
             }
@@ -200,13 +214,15 @@ Rectangle {
                 x: timeline.leftPadding +
                    timeline.visualPosition * (timeline.availableWidth - width)
                 y: timeline.topPadding + timeline.availableHeight / 2 - height / 2
-                width: 14; height: 14; radius: 7
-                color: timeline.pressed ? Theme.accent : Theme.text
+                width: timeline.pressed ? 16 : 14
+                height: width
+                radius: width / 2
+                color: Theme.text
                 border.width: 2
-                border.color: timeline.pressed ? Theme.text : Theme.accent
+                border.color: Theme.accent
                 visible: bar.hasWindow
 
-                Behavior on color { ColorAnimation { duration: 80 } }
+                Behavior on width { NumberAnimation { duration: Theme.durFast } }
             }
         }
 
@@ -218,13 +234,13 @@ Rectangle {
             Label {
                 text: shamsi.toShamsiShort(syncPlayback.windowStartUtcUs)
                 color: Theme.textMute
-                font.pixelSize: 10
+                font.pixelSize: Theme.fontXs
             }
             Item { Layout.fillWidth: true }
             Label {
                 text: shamsi.toShamsiShort(syncPlayback.windowEndUtcUs)
                 color: Theme.textMute
-                font.pixelSize: 10
+                font.pixelSize: Theme.fontXs
             }
         }
     }
