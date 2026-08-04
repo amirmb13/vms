@@ -1,0 +1,690 @@
+/* ============================================================================
+   VMS Admin Theme — minimal, modern restyle of the Django admin.
+   Built on Django 5.x admin CSS custom properties + targeted component
+   overrides. Fully RTL-aware (LANGUAGE_CODE = fa).
+   ========================================================================== */
+
+/* ---- Design tokens -------------------------------------------------------- */
+:root {
+  /* Brand: deep surveillance teal + calm neutrals (5 colors total) */
+  --vms-primary: #0f766e;
+  --vms-primary-strong: #115e59;
+  --vms-primary-soft: #f0fdfa;
+  --vms-ink: #1c2526;
+  --vms-ink-quiet: #64748b;
+  --vms-surface: #ffffff;
+  --vms-surface-2: #f6f8f8;
+  --vms-line: #e4e9e9;
+  --vms-danger: #b42318;
+  --vms-radius: 10px;
+  --vms-radius-sm: 7px;
+  --vms-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+
+  /* Map onto Django admin variables */
+  --primary: var(--vms-primary);
+  --secondary: var(--vms-primary-strong);
+  --accent: var(--vms-primary);
+  --primary-fg: #ffffff;
+
+  --body-fg: var(--vms-ink);
+  --body-bg: var(--vms-surface-2);
+  --body-quiet-color: var(--vms-ink-quiet);
+  --body-loud-color: var(--vms-ink);
+
+  --header-bg: var(--vms-surface);
+  --header-color: var(--vms-ink-quiet);
+  --header-branding-color: var(--vms-ink);
+  --header-link-color: var(--vms-ink);
+
+  --breadcrumbs-bg: transparent;
+  --breadcrumbs-fg: var(--vms-ink-quiet);
+  --breadcrumbs-link-fg: var(--vms-primary);
+
+  --link-fg: var(--vms-primary);
+  --link-hover-color: var(--vms-primary-strong);
+  --link-selected-fg: var(--vms-primary-strong);
+
+  --hairline-color: var(--vms-line);
+  --border-color: var(--vms-line);
+  --darkened-bg: var(--vms-surface-2);
+  --selected-bg: var(--vms-primary-soft);
+  --selected-row: var(--vms-primary-soft);
+
+  --button-bg: var(--vms-primary);
+  --button-fg: #ffffff;
+  --button-hover-bg: var(--vms-primary-strong);
+  --default-button-bg: var(--vms-primary-strong);
+  --default-button-hover-bg: #0b4f4a;
+  --close-button-bg: #94a3ab;
+  --close-button-hover-bg: #64748b;
+  --delete-button-bg: var(--vms-danger);
+  --delete-button-hover-bg: #912018;
+
+  --object-tools-bg: var(--vms-surface);
+  --object-tools-fg: var(--vms-ink);
+  --object-tools-hover-bg: var(--vms-surface-2);
+
+  --error-fg: var(--vms-danger);
+
+  --font-family-primary: "Vazirmatn", "Segoe UI", Tahoma, system-ui, sans-serif;
+  --font-family-monospace: ui-monospace, "Cascadia Mono", "Courier New", monospace;
+}
+
+/* ---- Dark mode ------------------------------------------------------------ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --vms-primary: #2dd4bf;
+    --vms-primary-strong: #5eead4;
+    --vms-primary-soft: rgba(45, 212, 191, 0.12);
+    --vms-ink: #e7ecec;
+    --vms-ink-quiet: #93a3a3;
+    --vms-surface: #161d1e;
+    --vms-surface-2: #0e1415;
+    --vms-line: #263133;
+    --vms-danger: #f97066;
+    --vms-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+
+    --primary-fg: #06302c;
+    --button-fg: #06302c;
+    --object-tools-bg: #1f2a2b;
+    --object-tools-hover-bg: #263334;
+    --close-button-bg: #3a4a4c;
+    --close-button-hover-bg: #4c5f61;
+  }
+}
+
+html[data-theme="dark"] {
+  --vms-primary: #2dd4bf;
+  --vms-primary-strong: #5eead4;
+  --vms-primary-soft: rgba(45, 212, 191, 0.12);
+  --vms-ink: #e7ecec;
+  --vms-ink-quiet: #93a3a3;
+  --vms-surface: #161d1e;
+  --vms-surface-2: #0e1415;
+  --vms-line: #263133;
+  --vms-danger: #f97066;
+  --vms-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+
+  --primary: var(--vms-primary);
+  --secondary: var(--vms-primary-strong);
+  --primary-fg: #06302c;
+  --body-fg: var(--vms-ink);
+  --body-bg: var(--vms-surface-2);
+  --body-quiet-color: var(--vms-ink-quiet);
+  --body-loud-color: var(--vms-ink);
+  --header-bg: var(--vms-surface);
+  --header-color: var(--vms-ink-quiet);
+  --header-branding-color: var(--vms-ink);
+  --header-link-color: var(--vms-ink);
+  --link-fg: var(--vms-primary);
+  --link-hover-color: var(--vms-primary-strong);
+  --hairline-color: var(--vms-line);
+  --border-color: var(--vms-line);
+  --darkened-bg: #131a1b;
+  --selected-bg: var(--vms-primary-soft);
+  --selected-row: var(--vms-primary-soft);
+  --button-bg: var(--vms-primary);
+  --button-fg: #06302c;
+  --button-hover-bg: var(--vms-primary-strong);
+  --default-button-bg: var(--vms-primary);
+  --default-button-hover-bg: var(--vms-primary-strong);
+  --object-tools-bg: #1f2a2b;
+  --object-tools-fg: var(--vms-ink);
+  --object-tools-hover-bg: #263334;
+  --delete-button-bg: var(--vms-danger);
+  --error-fg: var(--vms-danger);
+}
+
+/* ---- Base ------------------------------------------------------------------ */
+html {
+  background: var(--body-bg);
+}
+
+body {
+  font-family: var(--font-family-primary);
+  font-size: 0.875rem;
+  letter-spacing: 0;
+  color: var(--body-fg);
+}
+
+a:link,
+a:visited {
+  transition: color 120ms ease;
+}
+
+/* ---- Header ---------------------------------------------------------------- */
+#header {
+  background: var(--header-bg);
+  color: var(--header-color);
+  border-bottom: 1px solid var(--hairline-color);
+  padding: 12px 28px;
+  box-shadow: var(--vms-shadow);
+}
+
+#branding h1,
+#site-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+
+#site-name a:link,
+#site-name a:visited {
+  color: var(--header-branding-color);
+}
+
+/* Brand mark: small camera-status dot before the site name */
+#site-name a::before {
+  content: "";
+  display: inline-block;
+  inline-size: 9px;
+  block-size: 9px;
+  border-radius: 50%;
+  background: var(--vms-primary);
+  margin-inline-end: 10px;
+  vertical-align: middle;
+  box-shadow: 0 0 0 4px var(--vms-primary-soft);
+}
+
+#user-tools {
+  font-size: 0.75rem;
+  letter-spacing: 0;
+}
+
+#user-tools a,
+#logout-form button {
+  border-bottom: none;
+  border-radius: var(--vms-radius-sm);
+  padding: 5px 10px;
+  text-transform: none;
+  font-family: var(--font-family-primary);
+  transition: background 120ms ease;
+}
+
+#user-tools a:hover,
+#logout-form button:hover {
+  background: var(--darkened-bg);
+  color: var(--body-fg);
+}
+
+/* ---- Breadcrumbs ------------------------------------------------------------ */
+div.breadcrumbs {
+  background: transparent;
+  color: var(--breadcrumbs-fg);
+  padding: 16px 28px 4px;
+  font-size: 0.75rem;
+}
+
+/* ---- Sidebar (app navigation) ----------------------------------------------- */
+#nav-sidebar {
+  background: var(--vms-surface);
+  border-inline-end: 1px solid var(--hairline-color);
+  border-inline-start: none;
+}
+
+#nav-sidebar .module th,
+#nav-sidebar .module td,
+#nav-sidebar .module caption {
+  padding: 7px 14px;
+}
+
+#nav-sidebar .module caption {
+  background: transparent;
+  color: var(--body-quiet-color);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0.04em;
+  border-bottom: none;
+  margin-top: 10px;
+}
+
+#nav-sidebar .current-model,
+#nav-sidebar .current-app .section:link,
+#nav-sidebar .current-app .section:visited {
+  background: var(--selected-bg);
+  border-radius: var(--vms-radius-sm);
+}
+
+#nav-sidebar a {
+  border-radius: var(--vms-radius-sm);
+}
+
+#nav-filter {
+  border: 1px solid var(--border-color);
+  border-radius: var(--vms-radius-sm);
+  background: var(--body-bg);
+  font-family: var(--font-family-primary);
+  margin: 10px 14px;
+  width: calc(100% - 28px);
+}
+
+/* ---- Content area & modules as cards ---------------------------------------- */
+#content {
+  padding: 20px 28px;
+}
+
+#content h1 {
+  font-weight: 700;
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+  color: var(--body-loud-color);
+}
+
+.module {
+  background: var(--vms-surface);
+  border: 1px solid var(--hairline-color);
+  border-radius: var(--vms-radius);
+  box-shadow: var(--vms-shadow);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.module h2,
+.module caption,
+.inline-group h2 {
+  background: var(--vms-surface);
+  color: var(--body-loud-color);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--hairline-color);
+}
+
+.module caption a.section:link,
+.module caption a.section:visited {
+  color: var(--body-loud-color);
+}
+
+/* Dashboard app list */
+.app-list {
+  gap: 20px;
+}
+
+#content-main .model-list td,
+#content-main .model-list th,
+.module table td,
+.module table th {
+  padding: 10px 16px;
+}
+
+.module tbody tr {
+  border-bottom: 1px solid var(--hairline-color);
+}
+
+.module tbody tr:last-child {
+  border-bottom: none;
+}
+
+.addlink,
+.changelink,
+.viewlink {
+  font-size: 0.75rem;
+}
+
+/* ---- Recent actions --------------------------------------------------------- */
+#recent-actions-module h2 {
+  border-bottom: 1px solid var(--hairline-color);
+}
+
+#recent-actions-module h3 {
+  padding: 10px 16px 0;
+  font-size: 0.75rem;
+  color: var(--body-quiet-color);
+}
+
+.module ul.actionlist {
+  padding: 8px 16px 14px;
+}
+
+ul.actionlist li {
+  padding: 5px 0;
+  font-size: 0.8125rem;
+}
+
+/* ---- Buttons ----------------------------------------------------------------- */
+.button,
+input[type="submit"],
+input[type="button"],
+.submit-row input,
+a.button {
+  border-radius: var(--vms-radius-sm);
+  padding: 9px 18px;
+  font-weight: 600;
+  font-family: var(--font-family-primary);
+  font-size: 0.8125rem;
+  transition: background 120ms ease, box-shadow 120ms ease;
+  box-shadow: var(--vms-shadow);
+}
+
+.button.default,
+input[type="submit"].default,
+.submit-row input.default {
+  font-weight: 700;
+}
+
+.object-tools a:link,
+.object-tools a:visited {
+  border-radius: var(--vms-radius-sm);
+  background: var(--object-tools-bg);
+  color: var(--object-tools-fg);
+  border: 1px solid var(--border-color);
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 7px 14px;
+  font-size: 0.75rem;
+  box-shadow: var(--vms-shadow);
+}
+
+.object-tools a:hover,
+.object-tools a:focus {
+  background: var(--object-tools-hover-bg);
+  color: var(--object-tools-fg);
+}
+
+.object-tools a.addlink {
+  background: var(--vms-primary);
+  color: var(--primary-fg);
+  border-color: transparent;
+}
+
+.object-tools a.addlink:hover {
+  background: var(--vms-primary-strong);
+  color: var(--primary-fg);
+}
+
+/* ---- Change list (tables) ----------------------------------------------------- */
+#changelist {
+  gap: 20px;
+}
+
+#changelist .results {
+  border-radius: var(--vms-radius);
+  overflow-x: auto;
+}
+
+#changelist table thead th {
+  background: var(--darkened-bg);
+  padding: 10px 12px;
+  font-size: 0.71875rem;
+  font-weight: 700;
+  color: var(--body-quiet-color);
+  text-transform: none;
+}
+
+#changelist table thead th a:link,
+#changelist table thead th a:visited {
+  color: var(--body-quiet-color);
+}
+
+#changelist table tbody td,
+#changelist table tbody th {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--hairline-color);
+  vertical-align: middle;
+}
+
+#changelist table tbody tr:hover {
+  background: var(--darkened-bg);
+}
+
+.row1,
+.row2 {
+  background: transparent;
+}
+
+#changelist-search input[type="text"] {
+  border-radius: var(--vms-radius-sm);
+}
+
+#changelist-search input[type="submit"] {
+  border-radius: var(--vms-radius-sm);
+}
+
+#changelist-filter {
+  background: var(--vms-surface);
+  border: 1px solid var(--hairline-color);
+  border-radius: var(--vms-radius);
+  box-shadow: var(--vms-shadow);
+}
+
+#changelist-filter h2 {
+  background: transparent;
+  color: var(--body-loud-color);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--hairline-color);
+}
+
+#changelist-filter h3 {
+  font-size: 0.75rem;
+  color: var(--body-quiet-color);
+  font-weight: 700;
+}
+
+#changelist-filter li.selected a {
+  color: var(--vms-primary);
+  font-weight: 700;
+}
+
+.paginator {
+  font-size: 0.8125rem;
+  border-radius: var(--vms-radius);
+  background: var(--vms-surface);
+  border: 1px solid var(--hairline-color);
+  padding: 10px 16px;
+}
+
+.paginator a:link,
+.paginator a:visited {
+  border-radius: var(--vms-radius-sm);
+  background: transparent;
+  color: var(--vms-primary);
+  border: 1px solid var(--border-color);
+}
+
+.paginator a:hover {
+  background: var(--vms-primary);
+  color: var(--primary-fg);
+}
+
+.paginator .this-page {
+  background: var(--vms-primary);
+  color: var(--primary-fg);
+  border-radius: var(--vms-radius-sm);
+  padding: 4px 10px;
+  font-size: 0.8125rem;
+}
+
+/* Actions bar */
+#changelist .actions {
+  background: var(--darkened-bg);
+  border-radius: var(--vms-radius-sm);
+  padding: 8px 12px;
+}
+
+/* ---- Forms -------------------------------------------------------------------- */
+form input[type="text"],
+form input[type="password"],
+form input[type="email"],
+form input[type="url"],
+form input[type="number"],
+form input[type="tel"],
+form textarea,
+form select,
+form .vTextField {
+  border: 1px solid var(--border-color);
+  border-radius: var(--vms-radius-sm);
+  padding: 8px 12px;
+  background: var(--vms-surface);
+  color: var(--body-fg);
+  font-family: var(--font-family-primary);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+form input[type="text"]:focus,
+form input[type="password"]:focus,
+form input[type="email"]:focus,
+form input[type="number"]:focus,
+form textarea:focus,
+form select:focus,
+form .vTextField:focus {
+  border-color: var(--vms-primary);
+  box-shadow: 0 0 0 3px var(--vms-primary-soft);
+  outline: none;
+}
+
+fieldset.module {
+  padding-bottom: 6px;
+}
+
+.form-row {
+  border-bottom: 1px solid var(--hairline-color);
+  padding: 12px 16px;
+}
+
+.form-row:last-child {
+  border-bottom: none;
+}
+
+.aligned label {
+  color: var(--body-quiet-color);
+  font-weight: 600;
+  font-size: 0.8125rem;
+}
+
+.help,
+.help div,
+p.help {
+  color: var(--body-quiet-color);
+  font-size: 0.71875rem;
+}
+
+.submit-row {
+  background: var(--vms-surface);
+  border: 1px solid var(--hairline-color);
+  border-radius: var(--vms-radius);
+  box-shadow: var(--vms-shadow);
+  padding: 12px 16px;
+  gap: 10px;
+}
+
+.submit-row a.deletelink {
+  border-radius: var(--vms-radius-sm);
+  font-weight: 600;
+  padding: 9px 18px;
+  height: auto;
+  line-height: normal;
+}
+
+/* Selector (filter_horizontal) */
+.selector .selector-available h2,
+.selector .selector-chosen h2 {
+  border-radius: 0;
+}
+
+.selector-available,
+.selector-chosen {
+  border-radius: var(--vms-radius-sm);
+  overflow: hidden;
+}
+
+/* ---- Messages ------------------------------------------------------------------ */
+ul.messagelist li {
+  border-radius: var(--vms-radius);
+  box-shadow: var(--vms-shadow);
+  font-size: 0.8125rem;
+  padding: 12px 44px 12px 16px;
+  margin: 0 0 12px;
+}
+
+/* ---- Login page ------------------------------------------------------------------ */
+.login {
+  background: var(--body-bg);
+}
+
+.login #container {
+  background: var(--vms-surface);
+  border: 1px solid var(--hairline-color);
+  border-radius: 14px;
+  box-shadow: 0 8px 30px rgba(16, 24, 40, 0.08);
+  padding: 36px 32px;
+  margin-top: 9vh;
+  width: 24rem;
+}
+
+.login #header {
+  background: transparent;
+  border-bottom: none;
+  box-shadow: none;
+  padding: 0 0 20px;
+  text-align: center;
+}
+
+.login #header h1 {
+  font-size: 1.1rem;
+}
+
+.login #header h1 a {
+  color: var(--body-loud-color);
+}
+
+.login .form-row {
+  border-bottom: none;
+  padding: 6px 0;
+}
+
+.login .form-row label {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.login .form-row input[type="text"],
+.login .form-row input[type="password"] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+}
+
+.login .submit-row {
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  padding: 14px 0 0;
+}
+
+.login .submit-row input {
+  width: 100%;
+  padding: 11px 18px;
+}
+
+/* ---- Pagination / misc polish ------------------------------------------------------ */
+#footer {
+  padding: 16px 28px;
+}
+
+.delete-confirmation form .cancel-link {
+  border-radius: var(--vms-radius-sm);
+  height: auto;
+  padding: 9px 18px;
+  line-height: normal;
+}
+
+/* Calendar / clock widgets */
+.calendarbox,
+.clockbox {
+  border-radius: var(--vms-radius);
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(16, 24, 40, 0.12);
+}
+
+/* Reduce visual noise of dashed borders */
+.inline-related {
+  border-radius: var(--vms-radius-sm);
+}

@@ -22,6 +22,10 @@ RUN mkdir -p generated && \
       --python_out=generated --grpc_python_out=generated \
       /proto/control_signals.proto /proto/ai_signaling.proto
 
+# Bake admin static files (Django admin CSS + custom VMS theme) into the
+# image so WhiteNoise can serve them — no DB connection needed at build time.
+RUN python manage.py collectstatic --noinput
+
 EXPOSE 8000
 
 CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4"]
