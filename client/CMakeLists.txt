@@ -36,6 +36,7 @@ qt_add_executable(vms_client
     src/main.cpp
     src/grid/grid_model.cpp          # QAbstractListModel grid engine
     src/models/camera_tree_model.cpp # QAbstractItemModel RTL directory tree
+    src/net/session_manager.cpp      # backend connection + JWT session
     src/stream/stream_controller.cpp # adaptive profile switching
     src/stream/video_decoder.cpp     # FFmpeg HW-accel decode -> QSGTexture
     src/playback/sync_playback.cpp   # master NTP timeline broadcast
@@ -63,6 +64,7 @@ qt_add_qml_module(vms_client
         qml/SmartMap.qml
         qml/Theme.qml
         qml/UiButton.qml
+        qml/LoginScreen.qml
     RESOURCES
         resources/fonts/Vazirmatn-Regular.ttf
         resources/fonts/Vazirmatn-Bold.ttf

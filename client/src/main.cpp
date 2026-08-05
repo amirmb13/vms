@@ -13,6 +13,7 @@
 
 #include "grid/grid_model.h"
 #include "models/camera_tree_model.h"
+#include "net/session_manager.h"
 #include "stream/stream_controller.h"
 #include "playback/sync_playback.h"
 #include "playback/pip_worker.h"
@@ -27,6 +28,7 @@ int main(int argc, char* argv[]) {
 #endif
 
     QGuiApplication app(argc, argv);
+    app.setOrganizationName(QStringLiteral("Vms"));
     app.setApplicationName(QStringLiteral("سامانه مدیریت تصاویر نظارتی"));
 
     // Force the "Basic" (non-native) Controls style. Platform-native styles
@@ -51,6 +53,7 @@ int main(int argc, char* argv[]) {
     // C++ backends exposed to QML (grid engine, adaptive streams, sync playback)
     vms::GridModel gridModel;               // QAbstractListModel — layout JSONs
     vms::CameraTreeModel cameraTreeModel;   // RTL directory tree (REST-backed)
+    vms::SessionManager session;            // backend connection + JWT session
     vms::StreamController streamController; // profile switching vs. Media Relay
     vms::SyncPlayback syncPlayback;         // master NTP timeline broadcaster
     vms::ShamsiFormatter shamsi;            // ۱۴۰۵/۰۴/۳۰ - ۱۸:۵۱:۱۵ rendering
@@ -58,15 +61,33 @@ int main(int argc, char* argv[]) {
     // Master timeline fans out NTP seek/pause/rate to every archive decoder.
     syncPlayback.attachController(&streamController);
 
+    // When a session becomes available (fresh login or token refresh), arm the
+    // REST models with the server address + access token and reload them.
+    QObject::connect(&session, &vms::SessionManager::sessionRestored,
+                     &cameraTreeModel, [&] {
+        const QString base = session.apiBaseUrl();
+        const QString token = session.authToken();
+        cameraTreeModel.setApiBaseUrl(base);
+        cameraTreeModel.setAuthToken(token);
+        gridModel.setApiBaseUrl(base);
+        gridModel.setAuthToken(token);
+        cameraTreeModel.reload();
+        gridModel.reload();
+    });
+
     // PiP workers are instantiated per-cell from QML (VideoCell.qml).
     qmlRegisterType<vms::PipWorker>("Vms.Client", 1, 0, "PipWorker");
 
     engine.rootContext()->setContextProperty("gridModel", &gridModel);
     engine.rootContext()->setContextProperty("cameraTreeModel", &cameraTreeModel);
+    engine.rootContext()->setContextProperty("session", &session);
     engine.rootContext()->setContextProperty("streamController", &streamController);
     engine.rootContext()->setContextProperty("syncPlayback", &syncPlayback);
     engine.rootContext()->setContextProperty("shamsi", &shamsi);
 
     engine.loadFromModule("Vms.Client", "Main");
+
+    // Restore a previous session (persisted refresh token) once QML is live.
+    session.restore();
     return app.exec();
 }

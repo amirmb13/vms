@@ -24,6 +24,10 @@ ApplicationWindow {
     // state keeps the header honest instead of five identical dead buttons).
     property string currentView: "live"
 
+    // Reopens the connection panel while already signed in (plain toggle —
+    // auto-shown whenever there is no session; auto-closed after a login).
+    property bool settingsOpen: false
+
     header: Rectangle {
         height: 52
         color: Theme.surface
@@ -86,7 +90,12 @@ ApplicationWindow {
 
             Item { Layout.fillWidth: true }
 
-            UiButton { text: "تنظیمات سرور" }
+            // Opens the server connection panel (change server / sign out).
+            UiButton {
+                text: "تنظیمات سرور"
+                active: root.settingsOpen
+                onClicked: root.settingsOpen = !root.settingsOpen
+            }
 
             // Live Shamsi clock chip (UTC internally; Shamsi at the edge).
             Rectangle {
@@ -160,5 +169,19 @@ ApplicationWindow {
                 Layout.preferredHeight: 92
             }
         }
+    }
+
+    // Close the settings panel once a session comes up.
+    Connections {
+        target: session
+        function onConnectedChanged() {
+            if (session.connected) root.settingsOpen = false
+        }
+    }
+
+    // Full-window connection overlay (server URL, login, status).
+    LoginScreen {
+        anchors.fill: parent
+        forceVisible: root.settingsOpen
     }
 }
