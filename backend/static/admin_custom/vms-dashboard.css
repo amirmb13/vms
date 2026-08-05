@@ -302,6 +302,68 @@ a.vms-recent-object:hover {
   color: var(--body-quiet-color);
 }
 
+/* ---- Quick-start guide ---------------------------------------------------------- */
+.vms-guide {
+  margin-bottom: 26px;
+  padding: 18px 20px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--vms-primary) 6%, var(--vms-surface)),
+    var(--vms-surface)
+  );
+  border: 1px solid var(--hairline-color);
+  border-inline-start: 3px solid var(--vms-primary);
+  border-radius: var(--vms-radius);
+}
+
+.vms-guide-title {
+  margin: 0 0 12px;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  color: var(--body-loud-color);
+}
+
+.vms-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px 20px;
+}
+
+.vms-guide-step {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.vms-guide-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  inline-size: 22px;
+  block-size: 22px;
+  margin-top: 2px;
+  border-radius: 50%;
+  background: var(--vms-primary);
+  color: var(--primary-fg);
+  font-size: 0.6875rem;
+  font-weight: 800;
+}
+
+.vms-guide-step strong {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 0.8125rem;
+  color: var(--body-fg);
+}
+
+.vms-guide-step p {
+  margin: 0;
+  font-size: 0.71875rem;
+  line-height: 1.7;
+  color: var(--body-quiet-color);
+}
+
 /* ---- Responsive -------------------------------------------------------------------- */
 @media (max-width: 1024px) {
   body.vms-dashboard #content-related {

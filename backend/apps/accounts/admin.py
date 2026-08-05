@@ -46,7 +46,13 @@ class UserAdmin(DjangoUserAdmin):
         names = [g.name for g in obj.groups.all()]
         return "، ".join(names) if names else "—"
     fieldsets = DjangoUserAdmin.fieldsets + (
-        (_("اطلاعات سامانه نظارت"), {"fields": ("full_name_fa", "phone", "is_ad_account")}),
+        (_("اطلاعات سامانه نظارت"), {
+            "fields": ("full_name_fa", "phone", "is_ad_account"),
+            "description": (
+                "نام کامل فارسی کاربر و مشخصات تماس. اگر حساب از "
+                "اکتیو دایرکتوری می‌آید گزینه «حساب اکتیو دایرکتوری» را فعال کنید."
+            ),
+        }),
     )
     # New-user form: capture VMS identity fields at creation time too.
     add_fieldsets = DjangoUserAdmin.add_fieldsets + (
@@ -67,13 +73,42 @@ class RoleAdmin(admin.ModelAdmin):
         "name_fa",
         "can_view_live",
         "can_view_playback",
-        "can_export_video",
-        "can_control_ptz",
         "can_manage_cameras",
-        "can_manage_users",
         "can_approve_critical",
     )
     search_fields = ("name_fa",)
+
+    fieldsets = (
+        (_("عنوان نقش"), {
+            "fields": ("name_fa",),
+            "description": "مثلاً «اپراتور سالن»، «مدیر امنیت»، «پایشگر».",
+        }),
+        (_("مشاهده و بازبینی"), {
+            "fields": ("can_view_live", "can_view_playback", "can_export_video"),
+            "description": "فرد چه چیزهایی می‌تواند ببیند؟",
+        }),
+        (_("کنترل"), {
+            "fields": ("can_control_ptz",),
+            "description": "کنترل چرخش دوربین (PTZ) برای اپراتورهای سالن رصد.",
+        }),
+        (_("مدیریت"), {
+            "fields": ("can_manage_cameras", "can_manage_users"),
+            "description": "تنظیمات دوربین‌ها و کاربران فقط برای مدیران.",
+        }),
+        (_("عملیات حساس"), {
+            "fields": ("can_approve_critical",),
+            "classes": ("collapse",),
+            "description": (
+                "تأیید عملیات حساس (مثل حذف آرشیو) که نیازمند امضای "
+                "دو مدیر مجزا (تأیید چهارچشمی) است."
+            ),
+        }),
+    )
+
+    def has_delete_permission(self, request, obj=None):
+        # Roles are referenced by assignments; deleting them silently drops
+        # access. Keep the delete action but only for superusers.
+        return request.user.is_superuser
 
 
 @admin.register(RoleAssignment)

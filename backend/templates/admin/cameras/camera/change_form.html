@@ -1,0 +1,86 @@
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+
+{% block extrahead %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var ip = document.getElementById('id_ip_address');
+  if (!ip) { return; }
+
+  var btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = 'تشخیص خودکار';
+  btn.style.cssText =
+    'display:inline-flex;align-items:center;gap:.4rem;margin-top:.5rem;' +
+    'padding:.45rem .9rem;border-radius:.5rem;cursor:pointer;' +
+    'border:1px solid var(--accent);background:var(--accent);' +
+    'color:var(--button-fg, #fff);font-weight:600;';
+  btn.onclick = detect;
+
+  var status = document.createElement('div');
+  status.style.cssText = 'margin-top:.5rem;font-size:.85rem;line-height:1.6;';
+
+  var holder = ip.closest('.form-row');
+  if (holder) {
+    holder.appendChild(document.createElement('div'));
+    holder.lastChild.style.cssText = 'display:flex;flex-direction:column;gap:.25rem;';
+    holder.lastChild.appendChild(btn);
+    holder.lastChild.appendChild(status);
+  }
+
+  function val(id) {
+    var el = document.getElementById(id);
+    return el ? el.value : '';
+  }
+  function setVal(id, value) {
+    var el = document.getElementById(id);
+    if (el && value) { el.value = value; }
+  }
+
+  function detect() {
+    var formData = new URLSearchParams();
+    formData.set('ip_address', val('id_ip_address'));
+    formData.set('username', val('id_username'));
+    formData.set('password', val('id_password'));
+    formData.set('brand', val('id_brand'));
+    formData.set('onvif_endpoint', val('id_onvif_endpoint'));
+
+    status.textContent = 'در حال تشخیص...';
+    btn.disabled = true;
+
+    fetch('{% url "admin:cameras_camera_detect" %}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': '{{ csrf_token }}'
+      },
+      body: formData.toString()
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        setVal('id_onvif_endpoint', res.onvif_endpoint);
+        setVal('id_rtsp_main_url', res.rtsp_main_url);
+        setVal('id_rtsp_mid_url', res.rtsp_mid_url);
+        setVal('id_rtsp_sub_url', res.rtsp_sub_url);
+        setVal('id_codec', res.codec);
+
+        var lines = [];
+        if (res.method === 'onvif') {
+          var d = res.device_info || {};
+          lines.push('دوربین با ONVIF شناسایی شد: ' +
+            (d.manufacturer || '') + ' ' + (d.model || '') + ' - ' + (d.firmware || ''));
+        } else if (res.method === 'brand') {
+          lines.push('URL استریم از الگوی برند ساخته شد.');
+        } else {
+          lines.push('تشخیص ممکن نشد.');
+        }
+        (res.warnings || []).forEach(function (w) { lines.push(w); });
+        status.innerHTML = lines.join('<br>');
+      })
+      .catch(function () { status.textContent = 'خطا در ارتباط با سامانه.'; })
+      .finally(function () { btn.disabled = false; });
+  }
+});
+</script>
+{% endblock %}

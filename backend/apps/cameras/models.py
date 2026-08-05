@@ -45,6 +45,24 @@ class Camera(models.Model):
         H264 = "h264", "H.264"
         H265 = "h265", "H.265"
 
+    class Brand(models.TextChoices):
+        HIKVISION = "hikvision", _("هیک‌ویژن (Hikvision)")
+        DAHUA = "dahua", _("داهوا (Dahua)")
+        UNIVIEW = "uniview", _("یونی‌ویو (Uniview)")
+        AXIS = "axis", _("اکسیس (Axis)")
+        # Iranian manufacturers — all ONVIF compliant; auto-detected.
+        ARIA = "aria", _("آریا (Aria)")
+        CAMBIZ = "cambiz", _("کامبیز (Cambiz)")
+        ATAL = "atal", _("آتال (Atal)")
+        RADIN = "radin", _("رادین (Radin)")
+        PARSAN = "parsan", _("پارسان (Parsan)")
+        PEJVAK = "pejvak", _("پژواک (Pejvak)")
+        SANA = "sana", _("سانا (Sana)")
+        ARMAN = "arman", _("آرمان (Arman)")
+        MERSAD = "mersad", _("مرصاد (Mersad)")
+        GENERIC_ONVIF = "generic-onvif", _("استاندارد (ONVIF)")
+        CUSTOM = "custom", _("سفارشی (ورود دستی URL)")
+
     uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     name_fa = models.CharField(_("نام دوربین"), max_length=255)
     group = models.ForeignKey(
@@ -53,16 +71,44 @@ class Camera(models.Model):
     recording_server = models.ForeignKey(
         RecordingServer, on_delete=models.PROTECT, related_name="cameras"
     )
-    onvif_endpoint = models.CharField(_("آدرس ONVIF"), max_length=512)
-    username = models.CharField(max_length=128)
+
+    # --- Operator-facing connection info -------------------------------------
+    # The ONLY two fields an operator needs: IP + brand. Everything else is
+    # auto-detected (ONVIF) or derived from the brand's standard RTSP layout.
+    ip_address = models.CharField(_("آدرس IP"), max_length=64, blank=True)
+    brand = models.CharField(
+        _("مدل / برند"),
+        max_length=32,
+        choices=Brand.choices,
+        default=Brand.GENERIC_ONVIF,
+        help_text=_(
+            "برند دوربین را انتخاب کنید. برای دوربین‌های ایرانی و استاندارد "
+            "ONVIF، تنظیمات به صورت خودکار از خود دوربین تشخیص داده می‌شود."
+        ),
+    )
+
+    # ONVIF credentials — used for auto-detection and remote management.
+    onvif_endpoint = models.CharField(
+        _("آدرس سرویس ONVIF"), max_length=512, blank=True,
+        help_text=_("در صورت خالی بودن، به صورت خودکار ساخته می‌شود."),
+    )
+    username = models.CharField(_("نام کاربری دوربین"), max_length=128)
     # NOTE: encrypt at rest in production (e.g. django-fernet-fields / KMS).
-    password_encrypted = models.TextField()
+    password_encrypted = models.TextField(_("رمز عبور دوربین"))
 
     # Dual-stream mandate: main (4K/25fps archive) + sub (360p/15fps grid+motion)
-    rtsp_main_url = models.CharField(_("جریان اصلی (۴K)"), max_length=512)
-    rtsp_sub_url = models.CharField(_("جریان فرعی (۳۶۰p)"), max_length=512)
+    # These are auto-filled by detection; operators may leave them blank.
+    rtsp_main_url = models.CharField(
+        _("جریان اصلی (۴K)"), max_length=512, blank=True,
+        help_text=_("به صورت خودکار پر می‌شود — به سلیقه می‌توانید دستی تغییر دهید."),
+    )
+    rtsp_sub_url = models.CharField(
+        _("جریان فرعی (۳۶۰p)"), max_length=512, blank=True,
+        help_text=_("به صورت خودکار پر می‌شود — به سلیقه می‌توانید دستی تغییر دهید."),
+    )
     rtsp_mid_url = models.CharField(
-        _("جریان میانی (۷۲۰p/۱۰۸۰p)"), max_length=512, blank=True
+        _("جریان میانی (۷۲۰p/۱۰۸۰p)"), max_length=512, blank=True,
+        help_text=_("اختیاری — برای شبکه‌های ۴ دوربینه استفاده می‌شود."),
     )
     codec = models.CharField(max_length=8, choices=Codec.choices, default=Codec.H265)
 
