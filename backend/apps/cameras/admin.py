@@ -24,28 +24,39 @@ class RecordingServerAdmin(admin.ModelAdmin):
 
     list_display = (
         "hostname",
+        "storage_path",
         "grpc_endpoint",
         "gpu_available",
         "is_online",
         "heartbeat_shamsi",
     )
     list_filter = ("is_online", "gpu_available")
-    search_fields = ("hostname", "grpc_endpoint")
-    readonly_fields = ("uuid", "last_heartbeat")
+    search_fields = ("hostname", "grpc_endpoint", "storage_path")
+    readonly_fields = (
+        "uuid",
+        "grpc_endpoint",
+        "is_online",
+        "last_heartbeat",
+        "gpu_available",
+        "simd_capabilities",
+    )
 
     fieldsets = (
-        (_("شناسه سرور"), {
-            "fields": ("hostname", "grpc_endpoint"),
+        (_("مشخصات سرور"), {
+            "fields": ("hostname", "storage_path"),
             "description": (
-                "سرورهای ضبط هنگام روشن شدن به صورت خودکار در سامانه ثبت می‌شوند؛ "
-                "در حالت عادی نیازی به ثبت دستی ندارند."
+                "نام سرور و مسیر دیسکی که ضبط‌ها در آن ذخیره می‌شوند را اینجا تعیین کنید."
             ),
         }),
-        (_("سخت‌افزار"), {
-            "fields": ("gpu_available", "simd_capabilities"),
+        (_("اطلاعات خودکار (از سرور)"), {
+            "fields": ("grpc_endpoint", "is_online", "last_heartbeat",
+                       "gpu_available", "simd_capabilities", "uuid"),
+            "description": (
+                "این مقادیر هنگام روشن شدن سرور به صورت خودکار ثبت می‌شوند؛ "
+                "نیازی به ورود دستی ندارند."
+            ),
             "classes": ("collapse",),
         }),
-        (_("وضعیت"), {"fields": ("is_online", "last_heartbeat", "uuid")}),
     )
 
     @admin.display(description=_("آخرین ضربان (شمسی)"), ordering="last_heartbeat")

@@ -9,11 +9,46 @@ class RecordingServer(models.Model):
     """A registered C++ Recording Server / Media Relay node."""
 
     uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    hostname = models.CharField(_("نام میزبان"), max_length=255)
-    grpc_endpoint = models.CharField(_("آدرس gRPC"), max_length=255)  # host:port
-    gpu_available = models.BooleanField(_("پردازنده گرافیکی"), default=False)
-    simd_capabilities = models.JSONField(_("قابلیت‌های SIMD"), default=list)  # ["AVX2"]
-    is_online = models.BooleanField(_("آنلاین"), default=False)
+    hostname = models.CharField(
+        _("نام میزبان"),
+        max_length=255,
+        help_text=_("نام یا آدرس شبکه‌ای سرور، مثلاً «سرور ضبط ساختمان مرکزی» یا rec-01."),
+    )
+    grpc_endpoint = models.CharField(
+        _("آدرس gRPC"),
+        max_length=255,
+        help_text=_(
+            "آدرس host:port که بقیه سامانه با این سرور ارتباط برقرار می‌کنند. "
+            "این مقدار هنگام روشن شدن سرور به صورت خودکار ثبت می‌شود و نیازی به ورود دستی ندارد."
+        ),
+    )  # host:port
+    storage_path = models.CharField(
+        _("مسیر ذخیره‌سازی"),
+        max_length=512,
+        default="/mnt/vms-archive",
+        help_text=_(
+            "پوشه‌ای که ضبط‌ها در این سرور در آن نوشته می‌شوند (مثلاً /mnt/vms-archive). "
+            "باید روی همان سرور وجود داشته باشد و قابل نوشتن باشد."
+        ),
+    )
+    gpu_available = models.BooleanField(
+        _("پردازنده گرافیکی"),
+        default=False,
+        help_text=_("به صورت خودکار هنگام روشن شدن سرور تشخیص داده می‌شود."),
+    )
+    simd_capabilities = models.JSONField(
+        _("قابلیت‌های SIMD"),
+        default=list,
+        help_text=_(
+            "شتاب‌های پردازنده (مثل AVX2 یا AVX-512) که تشخیص حرکت را سریع‌تر می‌کنند. "
+            "به صورت خودکار تشخیص داده می‌شود."
+        ),
+    )  # ["AVX2"]
+    is_online = models.BooleanField(
+        _("آنلاین"),
+        default=False,
+        help_text=_("آخرین وضعیت اتصال سرور؛ به صورت خودکار به‌روزرسانی می‌شود."),
+    )
     last_heartbeat = models.DateTimeField(null=True, blank=True)  # UTC
 
     class Meta:

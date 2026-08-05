@@ -15,7 +15,7 @@ class RecordingServerSerializer(serializers.ModelSerializer):
     class Meta:
         model = RecordingServer
         fields = [
-            "uuid", "hostname", "grpc_endpoint", "gpu_available",
+            "uuid", "hostname", "grpc_endpoint", "storage_path", "gpu_available",
             "simd_capabilities", "is_online", "last_heartbeat",
             "last_heartbeat_shamsi", "camera_count",
         ]
